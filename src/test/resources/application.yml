@@ -1,9 +1,10 @@
 kestra:
-  repository:
-    type: memory
-  queue:
-    type: memory
   storage:
-    type: local
-    local:
-      base-path: /tmp/unittest
+    type: minio
+    minio:
+      endpoint: localhost
+      port: 9000
+      accessKey: AKIAIOSFODNN7EXAMPLE
+      secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      bucket: "unittest" #"${random.shortuuid}"
+

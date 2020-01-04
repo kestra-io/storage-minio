@@ -23,7 +23,7 @@ repositories {
 }
 
 sourceCompatibility = 11
-group "io.kestra.task.templates"
+group "org.kestra.storage.minio"
 
 tasks.withType(JavaCompile){
     options.encoding = "UTF-8"
@@ -55,10 +55,7 @@ dependencies {
     implementation group: "org.kestra", name: "core", version: kestraVersion
 
     // libs
-    // use "libs" to include all your needed dependencies in final jar
-    libs group: 'org.apache.commons', name: 'commons-lang3', version: '3.9'
-
-    configurations.implementation.extendsFrom(configurations.libs)
+    libs 'io.minio:minio:6.0.11'
 }
 
 
