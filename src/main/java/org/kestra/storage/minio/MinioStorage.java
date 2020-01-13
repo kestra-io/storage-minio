@@ -1,5 +1,6 @@
 package org.kestra.storage.minio;
 
+import io.micronaut.core.annotation.Introspected;
 import io.minio.MinioClient;
 import org.kestra.core.storages.StorageInterface;
 import org.kestra.core.storages.StorageObject;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 
 @Singleton
 @MinioStorageEnabled
+@Introspected
 public class MinioStorage implements StorageInterface {
     @Inject
     MinioClientFactory factory;
