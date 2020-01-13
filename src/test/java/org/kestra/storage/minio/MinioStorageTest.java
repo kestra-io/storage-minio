@@ -51,9 +51,9 @@ class MinioStorageTest {
     @Test
     void get() throws Exception {
         URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
-        this.putFile(resource, "file/storage/get.yml");
+        this.putFile(resource, "/file/storage/get.yml");
 
-        InputStream get = storageInterface.get(new URI("file/storage/get.yml"));
+        InputStream get = storageInterface.get(new URI("/file/storage/get.yml"));
 
         assertThat(
             CharStreams.toString(new InputStreamReader(get)),
@@ -64,17 +64,17 @@ class MinioStorageTest {
     @Test
     void missing() {
         assertThrows(FileNotFoundException.class, () -> {
-            storageInterface.get(new URI("file/storage/missing.yml"));
+            storageInterface.get(new URI("/file/storage/missing.yml"));
         });
     }
 
     @Test
     void put() throws Exception {
         URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
-        StorageObject put = this.putFile(resource, "file/storage/put.yml");
-        InputStream get = storageInterface.get(new URI("file/storage/put.yml"));
+        StorageObject put = this.putFile(resource, "/file/storage/put.yml");
+        InputStream get = storageInterface.get(new URI("/file/storage/put.yml"));
 
-//        assertThat(put.getUri(), is(new StorageObject(new URI("file/storage/get.yml"))));
+        assertThat(put.getUri().toString(), is(new URI("kestra:///file/storage/put.yml").toString()));
         assertThat(
             CharStreams.toString(new InputStreamReader(get)),
             is(CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile()))))
