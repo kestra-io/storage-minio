@@ -51,14 +51,15 @@ class MinioStorageTest {
     @Test
     void get() throws Exception {
         URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
+        String content = CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile())));
+
         this.putFile(resource, "/file/storage/get.yml");
 
         InputStream get = storageInterface.get(new URI("/file/storage/get.yml"));
+        assertThat(CharStreams.toString(new InputStreamReader(get)), is(content));
 
-        assertThat(
-            CharStreams.toString(new InputStreamReader(get)),
-            is(CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile()))))
-        );
+        InputStream getScheme = storageInterface.get(new URI("kestra:///file/storage/get.yml"));
+        assertThat(CharStreams.toString(new InputStreamReader(getScheme)), is(content));
     }
 
     @Test
