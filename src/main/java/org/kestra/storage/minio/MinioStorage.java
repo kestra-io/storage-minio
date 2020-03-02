@@ -3,15 +3,14 @@ package org.kestra.storage.minio;
 import io.micronaut.core.annotation.Introspected;
 import io.minio.MinioClient;
 import org.kestra.core.storages.StorageInterface;
-import org.kestra.core.storages.StorageObject;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.HashMap;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
 @Singleton
 @MinioStorageEnabled
@@ -37,7 +36,7 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public StorageObject put(URI uri, InputStream data) throws IOException {
+    public URI put(URI uri, InputStream data) throws IOException {
         try {
             client().putObject(
                 this.config.getBucket(),
@@ -54,8 +53,6 @@ public class MinioStorage implements StorageInterface {
             throw new IOException(e);
         }
 
-        URI result = URI.create("kestra://" + uri.getPath());
-
-        return new StorageObject(this, result);
+        return URI.create("kestra://" + uri.getPath());
     }
 }

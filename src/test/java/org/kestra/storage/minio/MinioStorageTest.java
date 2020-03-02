@@ -3,12 +3,10 @@ package org.kestra.storage.minio;
 import com.google.common.io.CharStreams;
 import io.micronaut.test.annotation.MicronautTest;
 import io.minio.MinioClient;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.kestra.core.storages.StorageInterface;
-import org.kestra.core.storages.StorageObject;
 
-import javax.inject.Inject;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -16,6 +14,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URL;
 import java.util.Objects;
+import javax.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -41,7 +40,7 @@ class MinioStorageTest {
     @Inject
     StorageInterface storageInterface;
 
-    private StorageObject putFile(URL resource, String path) throws Exception {
+    private URI putFile(URL resource, String path) throws Exception {
         return storageInterface.put(
             new URI(path),
             new FileInputStream(Objects.requireNonNull(resource).getFile())
@@ -72,10 +71,10 @@ class MinioStorageTest {
     @Test
     void put() throws Exception {
         URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
-        StorageObject put = this.putFile(resource, "/file/storage/put.yml");
+        URI put = this.putFile(resource, "/file/storage/put.yml");
         InputStream get = storageInterface.get(new URI("/file/storage/put.yml"));
 
-        assertThat(put.getUri().toString(), is(new URI("kestra:///file/storage/put.yml").toString()));
+        assertThat(put.toString(), is(new URI("kestra:///file/storage/put.yml").toString()));
         assertThat(
             CharStreams.toString(new InputStreamReader(get)),
             is(CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile()))))
