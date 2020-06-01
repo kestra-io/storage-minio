@@ -3,7 +3,6 @@ buildscript {
         kestraVersion = "0.1.+"
         micronautVersion = "1.3.5"
         lombokVersion = "1.18.12"
-        githubUrl = "kestra-io/" + project.name
     }
 }
 
