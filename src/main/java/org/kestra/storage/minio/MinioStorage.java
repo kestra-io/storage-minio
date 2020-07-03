@@ -1,13 +1,17 @@
 package org.kestra.storage.minio;
 
 import io.micronaut.core.annotation.Introspected;
+import io.minio.ErrorCode;
 import io.minio.MinioClient;
+import io.minio.ObjectStat;
+import io.minio.errors.ErrorResponseException;
 import org.kestra.core.storages.StorageInterface;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.security.InvalidKeyException;
 import java.util.HashMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -54,5 +58,21 @@ public class MinioStorage implements StorageInterface {
         }
 
         return URI.create("kestra://" + uri.getPath());
+    }
+
+    @Override
+    public boolean delete(URI uri) throws IOException {
+        try {
+            ObjectStat objectStat = client().statObject(this.config.getBucket(), uri.getPath().substring(1));
+            client().removeObject(this.config.getBucket(), uri.getPath().substring(1));
+            return true;
+        } catch (ErrorResponseException e) {
+            if (e.errorResponse().errorCode() == ErrorCode.NO_SUCH_KEY) {
+                return false;
+            }
+            throw new IOException(e);
+        } catch (Throwable e) {
+            throw new IOException(e);
+        }
     }
 }
