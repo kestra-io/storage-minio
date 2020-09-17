@@ -80,10 +80,10 @@ class MinioStorageTest {
             is(CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile()))))
         );
 
-        boolean delete = storageInterface.delete(new URI("/file/storage/put.yml"));
+        boolean delete = storageInterface.delete(put);
         assertThat(delete, is(true));
 
-        delete = storageInterface.delete(new URI("/file/storage/put.yml"));
+        delete = storageInterface.delete(put);
         assertThat(delete, is(false));
 
         assertThrows(FileNotFoundException.class, () -> {
