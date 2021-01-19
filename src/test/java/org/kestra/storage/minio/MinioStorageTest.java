@@ -2,6 +2,8 @@ package org.kestra.storage.minio;
 
 import com.google.common.io.CharStreams;
 import io.micronaut.test.annotation.MicronautTest;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,8 +34,8 @@ class MinioStorageTest {
     void init() throws Exception {
         MinioClient client = clientFactory.of(this.config);
 
-        if (!client.bucketExists(config.getBucket())) {
-            client.makeBucket(config.getBucket());
+        if (!client.bucketExists(BucketExistsArgs.builder().bucket(config.getBucket()).build())) {
+            client.makeBucket(MakeBucketArgs.builder().bucket(config.getBucket()).build());
         }
     }
 
