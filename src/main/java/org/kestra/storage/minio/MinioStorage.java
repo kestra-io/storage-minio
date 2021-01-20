@@ -1,9 +1,7 @@
 package org.kestra.storage.minio;
 
 import io.micronaut.core.annotation.Introspected;
-import io.minio.ErrorCode;
-import io.minio.MinioClient;
-import io.minio.ObjectStat;
+import io.minio.*;
 import io.minio.errors.ErrorResponseException;
 import org.kestra.core.storages.StorageInterface;
 
@@ -11,8 +9,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.security.InvalidKeyException;
-import java.util.HashMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -33,7 +29,11 @@ public class MinioStorage implements StorageInterface {
     @Override
     public InputStream get(URI uri) throws FileNotFoundException  {
         try {
-            return client().getObject(this.config.getBucket(), uri.getPath().substring(1));
+            return client().getObject(GetObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(uri.getPath().substring(1))
+                .build()
+            );
         } catch (Throwable e) {
             throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
         }
@@ -42,14 +42,11 @@ public class MinioStorage implements StorageInterface {
     @Override
     public URI put(URI uri, InputStream data) throws IOException {
         try {
-            client().putObject(
-                this.config.getBucket(),
-                uri.toString().substring(1),
-                data,
-                null,
-                new HashMap<>(),
-                null,
-                null
+            client().putObject(PutObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(uri.toString().substring(1))
+                .stream(data, -1, config.getPartSize())
+                .build()
             );
 
             data.close();
@@ -63,11 +60,21 @@ public class MinioStorage implements StorageInterface {
     @Override
     public boolean delete(URI uri) throws IOException {
         try {
-            ObjectStat objectStat = client().statObject(this.config.getBucket(), uri.getPath().substring(1));
-            client().removeObject(this.config.getBucket(), uri.getPath().substring(1));
+            client().statObject(StatObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(uri.getPath().substring(1))
+                .build()
+            );
+
+            client().removeObject(RemoveObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(uri.getPath().substring(1))
+                .build()
+            );
+
             return true;
         } catch (ErrorResponseException e) {
-            if (e.errorResponse().errorCode() == ErrorCode.NO_SUCH_KEY) {
+            if (e.errorResponse().code().equals("NoSuchKey")) {
                 return false;
             }
             throw new IOException(e);

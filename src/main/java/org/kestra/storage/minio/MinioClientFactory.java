@@ -13,13 +13,10 @@ public class MinioClientFactory {
         MinioClient client;
         
         try {
-            client = new MinioClient(
-                config.getEndpoint(),
-                config.getPort(),
-                config.getAccessKey(),
-                config.getSecretKey(),
-                config.isSecure()
-            );
+            client = MinioClient.builder()
+                .endpoint(config.getEndpoint(), config.getPort(), config.isSecure())
+                .credentials(config.getAccessKey(), config.getSecretKey())
+                .build();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

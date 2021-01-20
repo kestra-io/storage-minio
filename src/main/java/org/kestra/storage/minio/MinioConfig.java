@@ -1,6 +1,7 @@
 package org.kestra.storage.minio;
 
 import io.micronaut.context.annotation.ConfigurationProperties;
+import io.micronaut.core.convert.format.ReadableBytes;
 import lombok.Getter;
 
 import javax.inject.Singleton;
@@ -22,4 +23,7 @@ public class MinioConfig {
     boolean secure;
 
     String bucket;
+
+    @ReadableBytes
+    long partSize = 1024*1024*5;
 }
