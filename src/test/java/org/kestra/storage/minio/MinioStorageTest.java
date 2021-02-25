@@ -1,7 +1,7 @@
 package org.kestra.storage.minio;
 
 import com.google.common.io.CharStreams;
-import io.micronaut.test.annotation.MicronautTest;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
@@ -81,6 +81,8 @@ class MinioStorageTest {
             CharStreams.toString(new InputStreamReader(get)),
             is(CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile()))))
         );
+
+        assertThat(storageInterface.size(new URI("/file/storage/put.yml")), is(234L));
 
         boolean delete = storageInterface.delete(put);
         assertThat(delete, is(true));

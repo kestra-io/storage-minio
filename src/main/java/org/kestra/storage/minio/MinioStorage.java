@@ -27,7 +27,7 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public InputStream get(URI uri) throws FileNotFoundException  {
+    public InputStream get(URI uri) throws FileNotFoundException {
         try {
             return client().getObject(GetObjectArgs.builder()
                 .bucket(this.config.getBucket())
@@ -36,6 +36,20 @@ public class MinioStorage implements StorageInterface {
             );
         } catch (Throwable e) {
             throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
+        }
+    }
+
+    @Override
+    public Long size(URI uri) throws IOException {
+        try {
+            return client().statObject(StatObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(uri.getPath().substring(1))
+                .build()
+            )
+                .size();
+        } catch (Throwable e) {
+            throw new IOException(e);
         }
     }
 
