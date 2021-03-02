@@ -45,7 +45,7 @@ dependencies {
     compileOnly group: "org.kestra", name: "core", version: kestraVersion
 
     // libs
-    api 'io.minio:minio:8.0.3'
+    api 'io.minio:minio:8.1.0'
 }
 
 
