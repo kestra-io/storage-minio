@@ -1,4 +1,4 @@
-package org.kestra.storage.minio;
+package io.kestra.storage.minio;
 
 import com.google.common.io.CharStreams;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
@@ -7,7 +7,7 @@ import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.kestra.core.storages.StorageInterface;
+import io.kestra.core.storages.StorageInterface;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

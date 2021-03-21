@@ -1,4 +1,4 @@
-package org.kestra.storage.minio;
+package io.kestra.storage.minio;
 
 import io.micronaut.context.annotation.ConfigurationProperties;
 import io.micronaut.core.convert.format.ReadableBytes;

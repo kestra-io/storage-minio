@@ -1,9 +1,9 @@
-package org.kestra.storage.minio;
+package io.kestra.storage.minio;
 
 import io.micronaut.core.annotation.Introspected;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
-import org.kestra.core.storages.StorageInterface;
+import io.kestra.core.storages.StorageInterface;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
