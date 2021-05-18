@@ -15,10 +15,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import javax.inject.Inject;
 
+import static io.kestra.core.utils.Rethrow.throwConsumer;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -93,5 +97,33 @@ class MinioStorageTest {
         assertThrows(FileNotFoundException.class, () -> {
             storageInterface.get(new URI("/file/storage/put.yml"));
         });
+    }
+
+    @Test
+    void deleteByPrefix() throws Exception {
+        URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
+
+        List<String> path = Arrays.asList(
+            "/file/storage/root.yml",
+            "/file/storage/level1/1.yml",
+            "/file/storage/level1/level2/1.yml"
+        );
+
+        path.forEach(throwConsumer(s -> this.putFile(resource, s)));
+
+        List<URI> deleted = storageInterface.deleteByPrefix(new URI("/file/storage/"));
+
+        assertThat(deleted, containsInAnyOrder(path.stream().map(s -> URI.create("kestra://" + s)).toArray()));
+
+        assertThrows(FileNotFoundException.class, () -> {
+            storageInterface.get(new URI("/file/storage/"));
+        });
+
+        path
+            .forEach(s -> {
+                assertThrows(FileNotFoundException.class, () -> {
+                    storageInterface.get(new URI(s));
+                });
+            });
     }
 }

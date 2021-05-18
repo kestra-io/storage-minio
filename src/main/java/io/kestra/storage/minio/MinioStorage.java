@@ -1,16 +1,24 @@
 package io.kestra.storage.minio;
 
+import com.google.common.collect.Streams;
+import io.kestra.core.storages.StorageInterface;
 import io.micronaut.core.annotation.Introspected;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
-import io.kestra.core.storages.StorageInterface;
+import io.minio.messages.DeleteError;
+import io.minio.messages.DeleteObject;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+
+import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @Singleton
 @MinioStorageEnabled
@@ -95,5 +103,52 @@ public class MinioStorage implements StorageInterface {
         } catch (Throwable e) {
             throw new IOException(e);
         }
+    }
+
+    @Override
+    public List<URI> deleteByPrefix(URI storagePrefix) throws IOException {
+        List<Pair<String, DeleteObject>> deleted = Streams
+            .stream(client()
+                .listObjects(ListObjectsArgs.builder()
+                    .bucket(this.config.getBucket())
+                    .prefix(storagePrefix.getPath().substring(1))
+                    .recursive(true)
+                    .build()
+                )
+            )
+            .map(throwFunction(itemResult -> {
+                try {
+                    return Pair.of(itemResult.get().objectName(), new DeleteObject(itemResult.get().objectName()));
+                } catch (Throwable e) {
+                    throw new IOException(e);
+                }
+            }))
+            .collect(Collectors.toList());
+
+        Iterable<Result<DeleteError>> results = client().removeObjects(RemoveObjectsArgs.builder()
+            .bucket(this.config.getBucket())
+            .objects(deleted.stream().map(Pair::getRight).collect(Collectors.toList()))
+            .build()
+        );
+
+        if (results.iterator().hasNext()) {
+            throw new IOException("Unable to delete all files, failed on [" +
+                Streams
+                    .stream(results)
+                    .map(throwFunction(r -> {
+                        try {
+                            return r.get().objectName();
+                        } catch (Throwable e) {
+                            throw new IOException(e);
+                        }
+                    }))
+                    .collect(Collectors.joining(", ")) +
+                "]");
+        }
+
+        return deleted
+            .stream()
+            .map(deleteObject -> URI.create("kestra:///" + deleteObject.getLeft()))
+            .collect(Collectors.toList());
     }
 }
