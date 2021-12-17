@@ -3,7 +3,7 @@ package io.kestra.storage.minio;
 import io.micronaut.context.annotation.Factory;
 import io.minio.MinioClient;
 
-import javax.inject.Singleton;
+import jakarta.inject.Singleton;
 
 @Factory
 @MinioStorageEnabled
