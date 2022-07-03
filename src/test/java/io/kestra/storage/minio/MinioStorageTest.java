@@ -1,6 +1,7 @@
 package io.kestra.storage.minio;
 
 import com.google.common.io.CharStreams;
+import io.kestra.core.utils.IdUtils;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
@@ -129,5 +130,13 @@ class MinioStorageTest {
                     storageInterface.get(new URI(s));
                 });
             });
+    }
+
+    @Test
+    void deleteByPrefixNoResult() throws Exception {
+        String prefix = IdUtils.create();
+
+        List<URI> deleted = storageInterface.deleteByPrefix(new URI("/" + prefix + "/storage/"));
+        assertThat(deleted.size(), is(0));
     }
 }
