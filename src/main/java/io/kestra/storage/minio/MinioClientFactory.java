@@ -10,17 +10,19 @@ import jakarta.inject.Singleton;
 public class MinioClientFactory {
     @Singleton
     public MinioClient of(MinioConfig config) {
-        MinioClient client;
-        
         try {
-            client = MinioClient.builder()
-                .endpoint(config.getEndpoint(), config.getPort(), config.isSecure())
-                .credentials(config.getAccessKey(), config.getSecretKey())
-                .build();
+            MinioClient.Builder bdr;
+            bdr = MinioClient.builder()
+                    .endpoint(config.getEndpoint(), config.getPort(), config.isSecure());
+            if (config.region != null) {
+                bdr.region(config.getRegion());
+            }
+            if (config.accessKey != null && config.secretKey != null) {
+                bdr.credentials(config.getAccessKey(), config.getSecretKey());
+            }
+            return bdr.build();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        
-        return client;
     }
 }
