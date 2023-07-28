@@ -13,6 +13,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.stream.Collectors;
 import jakarta.inject.Inject;
@@ -48,6 +49,22 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
+    public boolean exists(URI uri) {
+        // There is no way to check if an object exist so we gather the stat of the object which will throw an exception
+        // if the object didn't exist.
+        try {
+            client().statObject(StatObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(uri.getPath().substring(1))
+                .build()
+            );
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
     public Long size(URI uri) throws IOException {
         try {
             return client().statObject(StatObjectArgs.builder()
@@ -56,6 +73,20 @@ public class MinioStorage implements StorageInterface {
                 .build()
             )
                 .size();
+        } catch (Throwable e) {
+            throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
+        }
+    }
+
+    @Override
+    public Long lastModifiedTime(URI uri) throws IOException {
+        try {
+            return client().statObject(StatObjectArgs.builder()
+                    .bucket(this.config.getBucket())
+                    .object(uri.getPath().substring(1))
+                    .build()
+                )
+                .lastModified().toInstant().toEpochMilli();
         } catch (Throwable e) {
             throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
         }
