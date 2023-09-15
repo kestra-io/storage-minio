@@ -24,7 +24,7 @@ sourceCompatibility = 17
 targetCompatibility = 17
 
 group "io.kestra.storage"
-description 'Minio / S3 storage plugin for Kestra'
+description 'Minio / S3 compatible storage plugin for Kestra'
 
 tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
