@@ -36,11 +36,11 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public InputStream get(URI uri) throws IOException {
+    public InputStream get(String tenantId, URI uri) throws IOException {
         try {
             return client().getObject(GetObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(uri.getPath().substring(1))
+                .object(tenantId + uri.getPath())
                 .build()
             );
         } catch (Throwable e) {
@@ -49,13 +49,13 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public boolean exists(URI uri) {
+    public boolean exists(String tenantId, URI uri) {
         // There is no way to check if an object exist so we gather the stat of the object which will throw an exception
         // if the object didn't exist.
         try {
             client().statObject(StatObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(uri.getPath().substring(1))
+                .object(tenantId + uri.getPath())
                 .build()
             );
             return true;
@@ -65,11 +65,11 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public Long size(URI uri) throws IOException {
+    public Long size(String tenantId, URI uri) throws IOException {
         try {
             return client().statObject(StatObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(uri.getPath().substring(1))
+                .object(tenantId + uri.getPath())
                 .build()
             )
                 .size();
@@ -79,11 +79,11 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public Long lastModifiedTime(URI uri) throws IOException {
+    public Long lastModifiedTime(String tenantId, URI uri) throws IOException {
         try {
             return client().statObject(StatObjectArgs.builder()
                     .bucket(this.config.getBucket())
-                    .object(uri.getPath().substring(1))
+                    .object(tenantId + uri.getPath())
                     .build()
                 )
                 .lastModified().toInstant().toEpochMilli();
@@ -93,11 +93,11 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public URI put(URI uri, InputStream data) throws IOException {
+    public URI put(String tenantId, URI uri, InputStream data) throws IOException {
         try {
             client().putObject(PutObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(uri.toString().substring(1))
+                .object(tenantId + uri.toString())
                 .stream(data, -1, config.getPartSize())
                 .build()
             );
@@ -111,17 +111,17 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public boolean delete(URI uri) throws IOException {
+    public boolean delete(String tenantId, URI uri) throws IOException {
         try {
             client().statObject(StatObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(uri.getPath().substring(1))
+                .object(tenantId + uri.getPath())
                 .build()
             );
 
             client().removeObject(RemoveObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(uri.getPath().substring(1))
+                .object(tenantId + uri.getPath())
                 .build()
             );
 
@@ -137,12 +137,12 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public List<URI> deleteByPrefix(URI storagePrefix) throws IOException {
+    public List<URI> deleteByPrefix(String tenantId, URI storagePrefix) throws IOException {
         List<Pair<String, DeleteObject>> deleted = Streams
             .stream(client()
                 .listObjects(ListObjectsArgs.builder()
                     .bucket(this.config.getBucket())
-                    .prefix(storagePrefix.getPath().substring(1))
+                    .prefix(tenantId + storagePrefix.getPath())
                     .recursive(true)
                     .build()
                 )
@@ -179,7 +179,7 @@ public class MinioStorage implements StorageInterface {
 
         return deleted
             .stream()
-            .map(deleteObject -> URI.create("kestra:///" + deleteObject.getLeft()))
+            .map(deleteObject -> URI.create("kestra:///" + deleteObject.getLeft().replace(tenantId + "/", "")))
             .collect(Collectors.toList());
     }
 }
