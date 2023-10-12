@@ -64,7 +64,7 @@ class MinioStorageTest {
         get(tenantId, resource, content);
     }
 
-    void get_NoTenant() throws Exception {
+    void getNoTenant() throws Exception {
         URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
         String content = CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile())));
         String tenantId = null;
@@ -135,7 +135,7 @@ class MinioStorageTest {
     }
 
     @Test
-    void deleteByPrefix_NoTenant() throws Exception {
+    void deleteByPrefixNoTenant() throws Exception {
         URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
         String tenantId = IdUtils.create();
 
