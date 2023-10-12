@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.jetbrains.annotations.NotNull;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -40,13 +41,15 @@ public class MinioStorage implements StorageInterface {
         try {
             return client().getObject(GetObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(tenantId + uri.getPath())
+                .object(getPath(tenantId, uri))
                 .build()
             );
         } catch (Throwable e) {
             throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
         }
     }
+
+
 
     @Override
     public boolean exists(String tenantId, URI uri) {
@@ -55,7 +58,7 @@ public class MinioStorage implements StorageInterface {
         try {
             client().statObject(StatObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(tenantId + uri.getPath())
+                .object(getPath(tenantId, uri))
                 .build()
             );
             return true;
@@ -69,7 +72,7 @@ public class MinioStorage implements StorageInterface {
         try {
             return client().statObject(StatObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(tenantId + uri.getPath())
+                .object(getPath(tenantId, uri))
                 .build()
             )
                 .size();
@@ -83,7 +86,7 @@ public class MinioStorage implements StorageInterface {
         try {
             return client().statObject(StatObjectArgs.builder()
                     .bucket(this.config.getBucket())
-                    .object(tenantId + uri.getPath())
+                    .object(getPath(tenantId, uri))
                     .build()
                 )
                 .lastModified().toInstant().toEpochMilli();
@@ -97,7 +100,7 @@ public class MinioStorage implements StorageInterface {
         try {
             client().putObject(PutObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(tenantId + uri.toString())
+                .object(getPath(tenantId, uri))
                 .stream(data, -1, config.getPartSize())
                 .build()
             );
@@ -107,7 +110,7 @@ public class MinioStorage implements StorageInterface {
             throw new IOException(e);
         }
 
-        return URI.create("kestra://" + uri.getPath());
+        return URI.create(getPath("kestra://", uri));
     }
 
     @Override
@@ -115,13 +118,13 @@ public class MinioStorage implements StorageInterface {
         try {
             client().statObject(StatObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(tenantId + uri.getPath())
+                .object(getPath(tenantId, uri))
                 .build()
             );
 
             client().removeObject(RemoveObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(tenantId + uri.getPath())
+                .object(getPath(tenantId, uri))
                 .build()
             );
 
@@ -142,7 +145,7 @@ public class MinioStorage implements StorageInterface {
             .stream(client()
                 .listObjects(ListObjectsArgs.builder()
                     .bucket(this.config.getBucket())
-                    .prefix(tenantId + storagePrefix.getPath())
+                    .prefix(getPath(tenantId, storagePrefix))
                     .recursive(true)
                     .build()
                 )
@@ -181,5 +184,13 @@ public class MinioStorage implements StorageInterface {
             .stream()
             .map(deleteObject -> URI.create("kestra:///" + deleteObject.getLeft().replace(tenantId + "/", "")))
             .collect(Collectors.toList());
+    }
+
+    @NotNull
+    private String getPath(String tenantId, URI uri) {
+        if (tenantId == null) {
+            return uri.getPath().substring(1);
+        }
+        return tenantId + uri.getPath();
     }
 }

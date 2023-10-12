@@ -61,6 +61,18 @@ class MinioStorageTest {
         String content = CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile())));
         String tenantId = IdUtils.create();
 
+        get(tenantId, resource, content);
+    }
+
+    void get_NoTenant() throws Exception {
+        URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
+        String content = CharStreams.toString(new InputStreamReader(new FileInputStream(Objects.requireNonNull(resource).getFile())));
+        String tenantId = null;
+
+        get(tenantId, resource, content);
+    }
+
+    private void get(String tenantId, URL resource, String content) throws Exception {
         this.putFile(tenantId, resource, "/file/storage/get.yml");
 
         URI item = new URI("/file/storage/get.yml");
@@ -119,6 +131,18 @@ class MinioStorageTest {
         URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
         String tenantId = IdUtils.create();
 
+        deleteByPrefix(tenantId, resource);
+    }
+
+    @Test
+    void deleteByPrefix_NoTenant() throws Exception {
+        URL resource = MinioStorageTest.class.getClassLoader().getResource("application.yml");
+        String tenantId = IdUtils.create();
+
+        deleteByPrefix(tenantId, resource);
+    }
+
+    private void deleteByPrefix(String tenantId, URL resource) throws Exception {
         List<String> path = Arrays.asList(
             "/file/storage/root.yml",
             "/file/storage/level1/1.yml",
