@@ -1,24 +1,29 @@
 package io.kestra.storage.minio;
 
 import com.google.common.collect.Streams;
+import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
 import io.micronaut.core.annotation.Introspected;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
+import io.minio.errors.MinioException;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
-import org.apache.commons.lang3.tuple.Pair;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.nio.file.Files;
-import java.util.List;
-import java.util.stream.Collectors;
+import io.minio.messages.Item;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.*;
+import java.net.URI;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -44,21 +49,58 @@ public class MinioStorage implements StorageInterface {
                 .object(getPath(tenantId, uri))
                 .build()
             );
-        } catch (Throwable e) {
-            throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(uri.toString(), e);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IOException(e);
         }
     }
 
+    @Override
+    public List<FileAttributes> list(String tenantId, URI uri) throws IOException {
+        try {
+            String path = getPath(tenantId, uri);
+            String prefix = (path.endsWith("/")) ? path : path + "/";
+            Iterable<Result<Item>> results = client().listObjects(ListObjectsArgs.builder()
+                .bucket(config.getBucket())
+                .prefix(prefix)
+                .delimiter("/")
+                .recursive(false)
+                .build());
+            List<FileAttributes> list = StreamSupport.stream(results.spliterator(), false)
+                .map(throwFunction(o -> o.get().objectName()))
+                .filter(name -> {
+                    name = name.substring(prefix.length());
+                    // Remove recursive result and requested dir
+                    return !name.isEmpty() && !Objects.equals(name, prefix) && new File(name).getParent() == null;
+                })
+                .map(throwFunction(this::getFileAttributes))
+                .toList();
+            if (list.isEmpty()) {
+                // minio does not handle directory deleting with a prefix that does not exist will just delete nothing
+                // Deleting an "empty directory" will at least return the directory name
+                throw new FileNotFoundException(uri + " (Not Found)");
+            }
+            return list;
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(uri.toString(), e);
+        } catch (FileNotFoundException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
+    }
 
 
     @Override
     public boolean exists(String tenantId, URI uri) {
         // There is no way to check if an object exist so we gather the stat of the object which will throw an exception
         // if the object didn't exist.
+        String path = getPath(tenantId, uri);
         try {
             client().statObject(StatObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(getPath(tenantId, uri))
+                .object(path)
                 .build()
             );
             return true;
@@ -71,13 +113,15 @@ public class MinioStorage implements StorageInterface {
     public Long size(String tenantId, URI uri) throws IOException {
         try {
             return client().statObject(StatObjectArgs.builder()
-                .bucket(this.config.getBucket())
-                .object(getPath(tenantId, uri))
-                .build()
-            )
+                    .bucket(this.config.getBucket())
+                    .object(getPath(tenantId, uri))
+                    .build()
+                )
                 .size();
-        } catch (Throwable e) {
-            throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(uri.toString(), e);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IOException(e);
         }
     }
 
@@ -90,23 +134,105 @@ public class MinioStorage implements StorageInterface {
                     .build()
                 )
                 .lastModified().toInstant().toEpochMilli();
-        } catch (Throwable e) {
-            throw new FileNotFoundException(uri.toString() + " (" + e.getMessage() + ")");
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(uri.toString(), e);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IOException(e);
+        }
+    }
+
+    @Override
+    public FileAttributes getAttributes(String tenantId, URI uri) throws IOException {
+        String path = getPath(tenantId, uri);
+        if (!exists(tenantId, uri)) {
+            // if key does not exist we try to get the "directory" (directory are just object ending with /)
+            path = path + "/";
+        }
+        return getFileAttributes(path);
+    }
+
+    private FileAttributes getFileAttributes(String path) throws IOException {
+        try {
+            StatObjectResponse stat = client().statObject(StatObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(path)
+                .build()
+            );
+            return MinioFileAttributes.builder()
+                .fileName(new File(path).getName())
+                .isDirectory(path.endsWith("/"))
+                .stat(stat)
+                .build();
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(path, e);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IOException(e);
         }
     }
 
     @Override
     public URI put(String tenantId, URI uri, InputStream data) throws IOException {
         try {
+            String path = getPath(tenantId, uri);
+            mkdirs(path);
             client().putObject(PutObjectArgs.builder()
                 .bucket(this.config.getBucket())
-                .object(getPath(tenantId, uri))
+                .object(path)
                 .stream(data, -1, config.getPartSize())
                 .build()
             );
 
             data.close();
-        } catch (Throwable e) {
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(uri.toString(), e);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IOException(e);
+        }
+
+        return URI.create(getPath("kestra://", uri));
+    }
+
+    private void mkdirs(String path) throws IOException {
+        try {
+            if (!path.endsWith("/") && path.lastIndexOf('/') > 0) {
+                path = path.substring(0, path.lastIndexOf('/') + 1);
+            }
+
+            client().putObject(PutObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(path)
+                .stream(new ByteArrayInputStream(new byte[]{}), 0, -1)
+                .build()
+            );
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
+    }
+
+    @Override
+    public boolean delete(String tenantId, URI uri) throws IOException {
+        return !deleteByPrefix(tenantId, uri).isEmpty();
+    }
+
+    @Override
+    public URI createDirectory(String tenantId, URI uri) throws IOException {
+        String path = getPath(tenantId, uri);
+        if (!path.endsWith("/")) {
+            // Directory are just objects ending with a /
+            path = path + "/";
+        }
+        mkdirs(path);
+
+        try {
+            client().putObject(PutObjectArgs.builder()
+                .bucket(this.config.getBucket())
+                .object(path)
+                .stream(new ByteArrayInputStream(new byte[]{}), 0, -1)
+                .build()
+            );
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(uri.toString(), e);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new IOException(e);
         }
 
@@ -114,29 +240,58 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public boolean delete(String tenantId, URI uri) throws IOException {
+    public URI move(String tenantId, URI from, URI to) throws IOException {
+        String source = getPath(tenantId, from);
+        String dest = getPath(tenantId, to);
+        List<DeleteObject> toDelete = new ArrayList<>();
+
         try {
-            client().statObject(StatObjectArgs.builder()
-                .bucket(this.config.getBucket())
-                .object(getPath(tenantId, uri))
-                .build()
-            );
-
-            client().removeObject(RemoveObjectArgs.builder()
-                .bucket(this.config.getBucket())
-                .object(getPath(tenantId, uri))
-                .build()
-            );
-
-            return true;
-        } catch (ErrorResponseException e) {
-            if (e.errorResponse().code().equals("NoSuchKey")) {
-                return false;
+            FileAttributes attributes = getAttributes(tenantId, from);
+            if (attributes.getType() == FileAttributes.FileType.Directory) {
+                Iterable<Result<Item>> results = client().listObjects(ListObjectsArgs.builder()
+                    .bucket(config.getBucket())
+                    .prefix(source)
+                    .delimiter("/")
+                    .recursive(true)
+                    .build());
+                for (Result<Item> result : results) {
+                    Item item = result.get();
+                    String newKey = dest + item.objectName().substring(source.length());
+                    move(item.objectName(), newKey, toDelete);
+                }
+            } else {
+                move(source, dest, toDelete);
             }
-            throw new IOException(e);
-        } catch (Throwable e) {
+            Iterable<Result<DeleteError>> results = client().removeObjects(RemoveObjectsArgs.builder()
+                .bucket(config.getBucket())
+                .objects(toDelete)
+                .build());
+            for (Result<DeleteError> result : results) {
+                DeleteError deleteError = result.get();
+                if (deleteError != null) {
+                    throw new IOException(deleteError.message());
+                }
+            }
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(from.toString(), e);
+        } catch (FileNotFoundException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
             throw new IOException(e);
         }
+        return URI.create(getPath("kestra://", to));
+    }
+
+    private void move(String source, String dest, List<DeleteObject> toDelete) throws Exception {
+        client().copyObject(CopyObjectArgs.builder()
+            .bucket(config.getBucket())
+            .object(dest)
+            .source(CopySource.builder()
+                .bucket(config.getBucket())
+                .object(source)
+                .build())
+            .build());
+        toDelete.add(new DeleteObject(source));
     }
 
     @Override
@@ -153,15 +308,15 @@ public class MinioStorage implements StorageInterface {
             .map(throwFunction(itemResult -> {
                 try {
                     return Pair.of(itemResult.get().objectName(), new DeleteObject(itemResult.get().objectName()));
-                } catch (Throwable e) {
+                } catch (Exception e) {
                     throw new IOException(e);
                 }
             }))
-            .collect(Collectors.toList());
+            .toList();
 
         Iterable<Result<DeleteError>> results = client().removeObjects(RemoveObjectsArgs.builder()
             .bucket(this.config.getBucket())
-            .objects(deleted.stream().map(Pair::getRight).collect(Collectors.toList()))
+            .objects(deleted.stream().map(Pair::getRight).toList())
             .build()
         );
 
@@ -172,7 +327,7 @@ public class MinioStorage implements StorageInterface {
                     .map(throwFunction(r -> {
                         try {
                             return r.get().objectName();
-                        } catch (Throwable e) {
+                        } catch (Exception e) {
                             throw new IOException(e);
                         }
                     }))
@@ -182,15 +337,32 @@ public class MinioStorage implements StorageInterface {
 
         return deleted
             .stream()
-            .map(deleteObject -> URI.create("kestra:///" + deleteObject.getLeft().replace(tenantId + "/", "")))
+            .map(Pair::getLeft)
+            .map(name -> name.replace(tenantId + "/", ""))
+            .map(name -> name.endsWith("/") ? name.substring(0, name.length() - 1) : name)
+            .map(name -> URI.create("kestra:///" + name))
             .collect(Collectors.toList());
     }
 
     @NotNull
     private String getPath(String tenantId, URI uri) {
+        parentTraversalGuard(uri);
         if (tenantId == null) {
             return uri.getPath().substring(1);
         }
         return tenantId + uri.getPath();
+    }
+
+    private void parentTraversalGuard(URI uri) {
+        if (uri.toString().contains("..")) {
+            throw new IllegalArgumentException("File should be accessed with their full path and not using relative '..' path.");
+        }
+    }
+
+    private IOException reThrowMinioStorageException(String uri, MinioException e) {
+        if (e instanceof ErrorResponseException && ((ErrorResponseException) e).errorResponse().code().equals("NoSuchKey")) {
+            return new FileNotFoundException(uri + " (File not found)");
+        }
+        return new IOException(e);
     }
 }
