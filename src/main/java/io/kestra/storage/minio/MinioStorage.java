@@ -5,8 +5,7 @@ import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
 import io.micronaut.core.annotation.Introspected;
 import io.minio.*;
-import io.minio.errors.ErrorResponseException;
-import io.minio.errors.MinioException;
+import io.minio.errors.*;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
@@ -59,8 +58,7 @@ public class MinioStorage implements StorageInterface {
     @Override
     public List<FileAttributes> list(String tenantId, URI uri) throws IOException {
         try {
-            String path = getPath(tenantId, uri);
-            String prefix = (path.endsWith("/")) ? path : path + "/";
+            String prefix = toPrefix(getPath(tenantId, uri), true);
             Iterable<Result<Item>> results = client().listObjects(ListObjectsArgs.builder()
                 .bucket(config.getBucket())
                 .prefix(prefix)
@@ -74,12 +72,12 @@ public class MinioStorage implements StorageInterface {
                     // Remove recursive result and requested dir
                     return !name.isEmpty() && !Objects.equals(name, prefix) && new File(name).getParent() == null;
                 })
+                .map(name -> name.startsWith("/") ? name : "/" + name)
                 .map(throwFunction(this::getFileAttributes))
                 .toList();
             if (list.isEmpty()) {
-                // minio does not handle directory deleting with a prefix that does not exist will just delete nothing
-                // Deleting an "empty directory" will at least return the directory name
-                throw new FileNotFoundException(uri + " (Not Found)");
+                // this will throw FileNotFound if there is no directory
+                this.getAttributes(tenantId, uri);
             }
             return list;
         } catch (MinioException e) {
@@ -144,7 +142,7 @@ public class MinioStorage implements StorageInterface {
     @Override
     public FileAttributes getAttributes(String tenantId, URI uri) throws IOException {
         String path = getPath(tenantId, uri);
-        if (!exists(tenantId, uri)) {
+        if (!path.endsWith("/") && !exists(tenantId, uri)) {
             // if key does not exist we try to get the "directory" (directory are just object ending with /)
             path = path + "/";
         }
@@ -172,9 +170,9 @@ public class MinioStorage implements StorageInterface {
 
     @Override
     public URI put(String tenantId, URI uri, InputStream data) throws IOException {
+        String path = getPath(tenantId, uri);
+        mkdirs(path);
         try {
-            String path = getPath(tenantId, uri);
-            mkdirs(path);
             client().putObject(PutObjectArgs.builder()
                 .bucket(this.config.getBucket())
                 .object(path)
@@ -189,23 +187,26 @@ public class MinioStorage implements StorageInterface {
             throw new IOException(e);
         }
 
-        return URI.create(getPath("kestra://", uri));
+        return URI.create("kestra://" + uri.getPath());
     }
 
     private void mkdirs(String path) throws IOException {
-        try {
-            if (!path.endsWith("/") && path.lastIndexOf('/') > 0) {
-                path = path.substring(0, path.lastIndexOf('/') + 1);
+        path = path.replaceAll("^/*", "");
+        String[] directories = path.split("/");
+        StringBuilder aggregatedPath = new StringBuilder("/");
+        // perform 1 put request per parent directory in the path
+        for (int i = 0; i <= directories.length - (path.endsWith("/") ? 1 : 2); i++) {
+            aggregatedPath.append(directories[i]).append("/");
+            try {
+                client().putObject(PutObjectArgs.builder()
+                    .bucket(this.config.getBucket())
+                    .object(aggregatedPath.toString())
+                    .stream(new ByteArrayInputStream(new byte[]{}), 0, -1)
+                    .build()
+                );
+            } catch (Exception e) {
+                throw new IOException(e);
             }
-
-            client().putObject(PutObjectArgs.builder()
-                .bucket(this.config.getBucket())
-                .object(path)
-                .stream(new ByteArrayInputStream(new byte[]{}), 0, -1)
-                .build()
-            );
-        } catch (Exception e) {
-            throw new IOException(e);
         }
     }
 
@@ -248,15 +249,16 @@ public class MinioStorage implements StorageInterface {
         try {
             FileAttributes attributes = getAttributes(tenantId, from);
             if (attributes.getType() == FileAttributes.FileType.Directory) {
+                String sourcePrefix = toPrefix(source, true);
                 Iterable<Result<Item>> results = client().listObjects(ListObjectsArgs.builder()
                     .bucket(config.getBucket())
-                    .prefix(source)
+                    .prefix(sourcePrefix)
                     .delimiter("/")
                     .recursive(true)
                     .build());
                 for (Result<Item> result : results) {
                     Item item = result.get();
-                    String newKey = dest + item.objectName().substring(source.length());
+                    String newKey = dest + "/" + item.objectName().substring(sourcePrefix.length());
                     move(item.objectName(), newKey, toDelete);
                 }
             } else {
@@ -283,6 +285,7 @@ public class MinioStorage implements StorageInterface {
     }
 
     private void move(String source, String dest, List<DeleteObject> toDelete) throws Exception {
+        mkdirs(dest);
         client().copyObject(CopyObjectArgs.builder()
             .bucket(config.getBucket())
             .object(dest)
@@ -300,7 +303,7 @@ public class MinioStorage implements StorageInterface {
             .stream(client()
                 .listObjects(ListObjectsArgs.builder()
                     .bucket(this.config.getBucket())
-                    .prefix(getPath(tenantId, storagePrefix))
+                    .prefix(toPrefix(getPath(tenantId, storagePrefix), false))
                     .recursive(true)
                     .build()
                 )
@@ -344,13 +347,31 @@ public class MinioStorage implements StorageInterface {
             .collect(Collectors.toList());
     }
 
+    private String toPrefix(String path, boolean isDirectory) {
+        String withoutLeadingSlash = path.substring(1);
+        if(isDirectory && !withoutLeadingSlash.isBlank()) {
+            return withoutLeadingSlash.endsWith("/") ? withoutLeadingSlash : withoutLeadingSlash + "/";
+        }
+
+        return withoutLeadingSlash;
+    }
+
     @NotNull
     private String getPath(String tenantId, URI uri) {
-        parentTraversalGuard(uri);
-        if (tenantId == null) {
-            return uri.getPath().substring(1);
+        if (uri == null) {
+            uri = URI.create("/");
         }
-        return tenantId + uri.getPath();
+
+        parentTraversalGuard(uri);
+        String path = uri.getPath();
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+
+        if (tenantId == null) {
+            return path;
+        }
+        return "/" + tenantId + path;
     }
 
     private void parentTraversalGuard(URI uri) {
