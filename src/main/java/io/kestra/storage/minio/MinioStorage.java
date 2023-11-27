@@ -16,12 +16,14 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.net.URI;
+import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
@@ -52,23 +54,20 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
+    public List<URI> filesByPrefix(String tenantId, URI prefix) throws IOException {
+        String internalStoragePrefix = getPath(tenantId, prefix);
+        String prefixForMinio = toPrefix(internalStoragePrefix, false);
+        return keysForPrefix(prefixForMinio, true)
+            .filter(name -> !name.endsWith("/"))
+            .map(name -> URI.create("kestra://" + prefix.getPath() + name.substring(internalStoragePrefix.length())))
+            .toList();
+    }
+
+    @Override
     public List<FileAttributes> list(String tenantId, URI uri) throws IOException {
         try {
             String prefix = toPrefix(getPath(tenantId, uri), true);
-            Iterable<Result<Item>> results = this.minioClient.listObjects(ListObjectsArgs.builder()
-                .bucket(config.getBucket())
-                .prefix(prefix)
-                .delimiter("/")
-                .recursive(false)
-                .build());
-            List<FileAttributes> list = StreamSupport.stream(results.spliterator(), false)
-                .map(throwFunction(o -> o.get().objectName()))
-                .filter(name -> {
-                    name = name.substring(prefix.length());
-                    // Remove recursive result and requested dir
-                    return !name.isEmpty() && !Objects.equals(name, prefix) && new File(name).getParent() == null;
-                })
-                .map(name -> name.startsWith("/") ? name : "/" + name)
+            List<FileAttributes> list = keysForPrefix(prefix, false)
                 .map(throwFunction(this::getFileAttributes))
                 .toList();
             if (list.isEmpty()) {
@@ -76,8 +75,33 @@ public class MinioStorage implements StorageInterface {
                 this.getAttributes(tenantId, uri);
             }
             return list;
+        } catch (FileNotFoundException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
+    }
+
+    private Stream<String> keysForPrefix(String prefix, boolean recursive) throws IOException {
+        try {
+            Iterable<Result<Item>> results = this.minioClient.listObjects(ListObjectsArgs.builder()
+                .bucket(config.getBucket())
+                .prefix(prefix)
+                .delimiter("/")
+                .recursive(recursive)
+                .build());
+            return StreamSupport.stream(results.spliterator(), false)
+                .map(throwFunction(o -> o.get().objectName()))
+                .filter(name -> {
+                    name = name.substring(prefix.length());
+                    // Remove recursive result and requested dir
+                    return !name.isEmpty()
+                        && !Objects.equals(name, prefix)
+                        && (recursive || Path.of(name).getParent() == null);
+                })
+                .map(name -> name.startsWith("/") ? name : "/" + name);
         } catch (MinioException e) {
-            throw reThrowMinioStorageException(uri.toString(), e);
+            throw reThrowMinioStorageException(prefix, e);
         } catch (FileNotFoundException | IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
