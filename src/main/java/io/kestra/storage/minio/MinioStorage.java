@@ -208,7 +208,28 @@ public class MinioStorage implements StorageInterface {
 
     @Override
     public boolean delete(String tenantId, URI uri) throws IOException {
-        return !deleteByPrefix(tenantId, uri).isEmpty();
+        FileAttributes fileAttributes;
+        try {
+            fileAttributes = getAttributes(tenantId, uri);
+        } catch (FileNotFoundException e) {
+            return false;
+        }
+        if (fileAttributes.getType() == FileAttributes.FileType.Directory) {
+            return !deleteByPrefix(tenantId, uri.getPath().endsWith("/") ? uri : URI.create(uri + "/")).isEmpty();
+        }
+
+        try {
+            this.minioClient.removeObject(
+                RemoveObjectArgs.builder()
+                    .bucket(config.getBucket())
+                    .object(getPath(tenantId, uri))
+                    .build()
+            );
+
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
