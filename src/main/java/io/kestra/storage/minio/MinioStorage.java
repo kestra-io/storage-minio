@@ -54,11 +54,10 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public List<URI> filesByPrefix(String tenantId, URI prefix) throws IOException {
+    public List<URI> allByPrefix(String tenantId, URI prefix, boolean includeDirectories) throws IOException {
         String internalStoragePrefix = getPath(tenantId, prefix);
         String prefixForMinio = toPrefix(internalStoragePrefix, false);
-        return keysForPrefix(prefixForMinio, true)
-            .filter(name -> !name.endsWith("/"))
+        return keysForPrefix(prefixForMinio, true, includeDirectories)
             .map(name -> URI.create("kestra://" + prefix.getPath() + name.substring(internalStoragePrefix.length())))
             .toList();
     }
@@ -67,7 +66,7 @@ public class MinioStorage implements StorageInterface {
     public List<FileAttributes> list(String tenantId, URI uri) throws IOException {
         try {
             String prefix = toPrefix(getPath(tenantId, uri), true);
-            List<FileAttributes> list = keysForPrefix(prefix, false)
+            List<FileAttributes> list = keysForPrefix(prefix, false, true)
                 .map(throwFunction(this::getFileAttributes))
                 .toList();
             if (list.isEmpty()) {
@@ -82,7 +81,7 @@ public class MinioStorage implements StorageInterface {
         }
     }
 
-    private Stream<String> keysForPrefix(String prefix, boolean recursive) throws IOException {
+    private Stream<String> keysForPrefix(String prefix, boolean recursive, boolean includeDirectories) throws IOException {
         try {
             Iterable<Result<Item>> results = this.minioClient.listObjects(ListObjectsArgs.builder()
                 .bucket(config.getBucket())
@@ -97,7 +96,9 @@ public class MinioStorage implements StorageInterface {
                     // Remove recursive result and requested dir
                     return !name.isEmpty()
                         && !Objects.equals(name, prefix)
-                        && (recursive || Path.of(name).getParent() == null);
+                        && !name.equals("/")
+                        && (recursive || Path.of(name).getParent() == null)
+                        && (includeDirectories || !name.endsWith("/"));
                 })
                 .map(name -> name.startsWith("/") ? name : "/" + name);
         } catch (MinioException e) {
