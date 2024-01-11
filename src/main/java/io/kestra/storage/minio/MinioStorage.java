@@ -129,38 +129,6 @@ public class MinioStorage implements StorageInterface {
     }
 
     @Override
-    public Long size(String tenantId, URI uri) throws IOException {
-        try {
-            return this.minioClient.statObject(StatObjectArgs.builder()
-                    .bucket(this.config.getBucket())
-                    .object(getPath(tenantId, uri))
-                    .build()
-                )
-                .size();
-        } catch (MinioException e) {
-            throw reThrowMinioStorageException(uri.toString(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IOException(e);
-        }
-    }
-
-    @Override
-    public Long lastModifiedTime(String tenantId, URI uri) throws IOException {
-        try {
-            return this.minioClient.statObject(StatObjectArgs.builder()
-                    .bucket(this.config.getBucket())
-                    .object(getPath(tenantId, uri))
-                    .build()
-                )
-                .lastModified().toInstant().toEpochMilli();
-        } catch (MinioException e) {
-            throw reThrowMinioStorageException(uri.toString(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IOException(e);
-        }
-    }
-
-    @Override
     public FileAttributes getAttributes(String tenantId, URI uri) throws IOException {
         String path = getPath(tenantId, uri);
         if (!path.endsWith("/") && !exists(tenantId, uri)) {
