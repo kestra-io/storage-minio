@@ -24,6 +24,8 @@ public class MinioConfig {
 
     String bucket;
 
+    boolean vhost;
+
     @ReadableBytes
     long partSize = 1024*1024*5;
 }

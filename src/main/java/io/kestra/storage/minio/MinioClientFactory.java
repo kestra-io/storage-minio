@@ -20,7 +20,13 @@ public class MinioClientFactory {
             if (config.accessKey != null && config.secretKey != null) {
                 bdr.credentials(config.getAccessKey(), config.getSecretKey());
             }
-            return bdr.build();
+
+            MinioClient build = bdr.build();
+            if (config.vhost) {
+                build.enableVirtualStyleEndpoint();
+            }
+
+            return build;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
