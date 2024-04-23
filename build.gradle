@@ -21,8 +21,8 @@ repositories {
     }
 }
 
-sourceCompatibility = 17
-targetCompatibility = 17
+sourceCompatibility = 21
+targetCompatibility = 21
 
 group "io.kestra.storage"
 description 'Minio / S3 compatible storage plugin for Kestra'
@@ -48,6 +48,7 @@ dependencies {
 
     // kestra
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
+    annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
 
     // libs
     api 'io.minio:minio:8.5.9'
@@ -88,10 +89,12 @@ dependencies {
     testImplementation group: "io.kestra", name: "repository-memory", version: kestraVersion
     testImplementation group: "io.kestra", name: "runner-memory", version: kestraVersion
     testImplementation group: "io.kestra", name: "storage-local", version: kestraVersion
+    testAnnotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
 
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.hamcrest:hamcrest-library:2.2"
+
 }
 
 /**********************************************************************************************************************\
