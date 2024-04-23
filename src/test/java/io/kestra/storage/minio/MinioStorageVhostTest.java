@@ -1,6 +1,7 @@
 package io.kestra.storage.minio;
 
-import io.kestra.core.storage.StorageTestSuite;
+import io.micronaut.context.annotation.Property;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
@@ -14,7 +15,9 @@ import java.net.URI;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 
-class MinioStorageTest extends StorageTestSuite {
+@MicronautTest
+@Property(name = "kestra.storage.minio.vhost", value = "true")
+class MinioStorageVhostTest {
     @Inject
     MinioClient client;
 
@@ -32,13 +35,13 @@ class MinioStorageTest extends StorageTestSuite {
     }
 
     @Test
-    void checkVhostOff() throws Exception {
+    void checkVhostOn() throws Exception {
         ByteArrayOutputStream traceStream = new ByteArrayOutputStream();
         client.traceOn(traceStream);
         try {
             minioStorage.list(null, URI.create("/"));
 
-            assertThat(traceStream.toString(), containsString("Host: " + config.endpoint));
+            assertThat(traceStream.toString(), containsString("Host: " + config.bucket + "." + config.endpoint));
         } finally {
             client.traceOff();
         }

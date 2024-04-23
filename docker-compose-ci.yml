@@ -11,6 +11,7 @@ services:
       - minio-data:/data
     command: server /data
     environment:
+      MINIO_DOMAIN: localhost
       MINIO_ACCESS_KEY: AKIAIOSFODNN7EXAMPLE
       MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     ports:
