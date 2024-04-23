@@ -1,6 +1,7 @@
 package io.kestra.storage.minio;
 
 import com.google.common.collect.Streams;
+import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
 import io.micronaut.core.annotation.Introspected;
@@ -11,6 +12,7 @@ import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,6 +33,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Singleton
 @MinioStorageEnabled
 @Introspected
+@Plugin
+@NoArgsConstructor
 public class MinioStorage implements StorageInterface {
     @Inject
     MinioClient minioClient;
