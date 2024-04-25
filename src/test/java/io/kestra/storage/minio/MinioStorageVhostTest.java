@@ -1,5 +1,6 @@
 package io.kestra.storage.minio;
 
+import io.kestra.core.storages.StorageInterface;
 import io.micronaut.context.annotation.Property;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import io.minio.BucketExistsArgs;
@@ -18,32 +19,27 @@ import static org.hamcrest.Matchers.containsString;
 @MicronautTest
 @Property(name = "kestra.storage.minio.vhost", value = "true")
 class MinioStorageVhostTest {
-    @Inject
-    MinioClient client;
 
     @Inject
-    MinioConfig config;
-
-    @Inject
-    MinioStorage minioStorage;
-
+    StorageInterface storage;
     @BeforeEach
     void init() throws Exception {
-        if (!client.bucketExists(BucketExistsArgs.builder().bucket(config.getBucket()).build())) {
-            client.makeBucket(MakeBucketArgs.builder().bucket(config.getBucket()).build());
+        MinioClient minioClient = ((MinioStorage) storage).miniClient();
+        if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(((MinioStorage) storage).getBucket()).build())) {
+            minioClient.makeBucket(MakeBucketArgs.builder().bucket(((MinioStorage) storage).getBucket()).build());
         }
     }
 
     @Test
     void checkVhostOn() throws Exception {
         ByteArrayOutputStream traceStream = new ByteArrayOutputStream();
-        client.traceOn(traceStream);
+        MinioClient minioClient = ((MinioStorage) storage).miniClient();
+        minioClient.traceOn(traceStream);
         try {
-            minioStorage.list(null, URI.create("/"));
-
-            assertThat(traceStream.toString(), containsString("Host: " + config.bucket + "." + config.endpoint));
+            storage.list(null, URI.create("/"));
+            assertThat(traceStream.toString(), containsString("Host: " + ((MinioStorage) storage).getBucket() + "." + ((MinioStorage) storage).getEndpoint()));
         } finally {
-            client.traceOff();
+            minioClient.traceOff();
         }
     }
 }

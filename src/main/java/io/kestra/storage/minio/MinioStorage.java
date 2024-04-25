@@ -1,18 +1,21 @@
 package io.kestra.storage.minio;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Streams;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
-import io.micronaut.core.annotation.Introspected;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.extern.jackson.Jacksonized;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
@@ -30,23 +33,40 @@ import java.util.stream.StreamSupport;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
-@Singleton
-@MinioStorageEnabled
-@Introspected
-@Plugin
+@AllArgsConstructor
 @NoArgsConstructor
-public class MinioStorage implements StorageInterface {
-    @Inject
-    MinioClient minioClient;
+@Builder
+@Jacksonized
+@Getter
+@Plugin
+@Plugin.Id("minio")
+public class MinioStorage implements StorageInterface, MinioConfig {
 
-    @Inject
-    MinioConfig config;
+    private String endpoint;
+    private int port;
+    private String accessKey;
+    private String secretKey;
+    private String region;
+    private boolean secure;
+    private String bucket;
+    private boolean vhost;
+    @Builder.Default
+    private long partSize = 1024 * 1024 * 5;
+
+    @Getter(AccessLevel.PRIVATE)
+    private MinioClient minioClient;
+
+    /** {@inheritDoc} **/
+    @Override
+    public void init() {
+       this.minioClient = MinioClientFactory.of(this);
+    }
 
     @Override
     public InputStream get(String tenantId, URI uri) throws IOException {
         try {
             return this.minioClient.getObject(GetObjectArgs.builder()
-                .bucket(this.config.getBucket())
+                .bucket(this.bucket)
                 .object(getPath(tenantId, uri))
                 .build()
             );
@@ -88,7 +108,7 @@ public class MinioStorage implements StorageInterface {
     private Stream<String> keysForPrefix(String prefix, boolean recursive, boolean includeDirectories) throws IOException {
         try {
             Iterable<Result<Item>> results = this.minioClient.listObjects(ListObjectsArgs.builder()
-                .bucket(config.getBucket())
+                .bucket(bucket)
                 .prefix(prefix)
                 .delimiter("/")
                 .recursive(recursive)
@@ -122,7 +142,7 @@ public class MinioStorage implements StorageInterface {
         String path = getPath(tenantId, uri);
         try {
             this.minioClient.statObject(StatObjectArgs.builder()
-                .bucket(this.config.getBucket())
+                .bucket(bucket)
                 .object(path)
                 .build()
             );
@@ -145,7 +165,7 @@ public class MinioStorage implements StorageInterface {
     private FileAttributes getFileAttributes(String path) throws IOException {
         try {
             StatObjectResponse stat = this.minioClient.statObject(StatObjectArgs.builder()
-                .bucket(this.config.getBucket())
+                .bucket(bucket)
                 .object(path)
                 .build()
             );
@@ -167,9 +187,9 @@ public class MinioStorage implements StorageInterface {
         mkdirs(path);
         try {
             this.minioClient.putObject(PutObjectArgs.builder()
-                .bucket(this.config.getBucket())
+                .bucket(bucket)
                 .object(path)
-                .stream(data, -1, config.getPartSize())
+                .stream(data, -1, partSize)
                 .build()
             );
 
@@ -192,7 +212,7 @@ public class MinioStorage implements StorageInterface {
             aggregatedPath.append(directories[i]).append("/");
             try {
                 this.minioClient.putObject(PutObjectArgs.builder()
-                    .bucket(this.config.getBucket())
+                    .bucket(bucket)
                     .object(aggregatedPath.toString())
                     .stream(new ByteArrayInputStream(new byte[]{}), 0, -1)
                     .build()
@@ -218,7 +238,7 @@ public class MinioStorage implements StorageInterface {
         try {
             this.minioClient.removeObject(
                 RemoveObjectArgs.builder()
-                    .bucket(config.getBucket())
+                    .bucket(bucket)
                     .object(getPath(tenantId, uri))
                     .build()
             );
@@ -240,7 +260,7 @@ public class MinioStorage implements StorageInterface {
 
         try {
             this.minioClient.putObject(PutObjectArgs.builder()
-                .bucket(this.config.getBucket())
+                .bucket(bucket)
                 .object(path)
                 .stream(new ByteArrayInputStream(new byte[]{}), 0, -1)
                 .build()
@@ -265,7 +285,7 @@ public class MinioStorage implements StorageInterface {
             if (attributes.getType() == FileAttributes.FileType.Directory) {
                 String sourcePrefix = toPrefix(source, true);
                 Iterable<Result<Item>> results = this.minioClient.listObjects(ListObjectsArgs.builder()
-                    .bucket(config.getBucket())
+                    .bucket(bucket)
                     .prefix(sourcePrefix)
                     .delimiter("/")
                     .recursive(true)
@@ -279,7 +299,7 @@ public class MinioStorage implements StorageInterface {
                 move(source, dest, toDelete);
             }
             Iterable<Result<DeleteError>> results = this.minioClient.removeObjects(RemoveObjectsArgs.builder()
-                .bucket(config.getBucket())
+                .bucket(bucket)
                 .objects(toDelete)
                 .build());
             for (Result<DeleteError> result : results) {
@@ -301,10 +321,10 @@ public class MinioStorage implements StorageInterface {
     private void move(String source, String dest, List<DeleteObject> toDelete) throws Exception {
         mkdirs(dest);
         this.minioClient.copyObject(CopyObjectArgs.builder()
-            .bucket(config.getBucket())
+            .bucket(bucket)
             .object(dest)
             .source(CopySource.builder()
-                .bucket(config.getBucket())
+                .bucket(bucket)
                 .object(source)
                 .build())
             .build());
@@ -316,7 +336,7 @@ public class MinioStorage implements StorageInterface {
         List<Pair<String, DeleteObject>> deleted = Streams
             .stream(this.minioClient
                 .listObjects(ListObjectsArgs.builder()
-                    .bucket(this.config.getBucket())
+                    .bucket(bucket)
                     .prefix(toPrefix(getPath(tenantId, storagePrefix), false))
                     .recursive(true)
                     .build()
@@ -332,7 +352,7 @@ public class MinioStorage implements StorageInterface {
             .toList();
 
         Iterable<Result<DeleteError>> results = this.minioClient.removeObjects(RemoveObjectsArgs.builder()
-            .bucket(this.config.getBucket())
+            .bucket(bucket)
             .objects(deleted.stream().map(Pair::getRight).toList())
             .build()
         );
@@ -399,5 +419,10 @@ public class MinioStorage implements StorageInterface {
             return new FileNotFoundException(uri + " (File not found)");
         }
         return new IOException(e);
+    }
+
+    @VisibleForTesting
+    MinioClient miniClient() {
+        return minioClient;
     }
 }

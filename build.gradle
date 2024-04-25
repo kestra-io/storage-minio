@@ -36,16 +36,7 @@ dependencies {
     // lombok
     annotationProcessor "org.projectlombok:lombok:$lombokVersion"
     compileOnly "org.projectlombok:lombok:$lombokVersion"
-
-    // micronaut
-    annotationProcessor platform("io.micronaut.platform:micronaut-platform:$micronautVersion")
-    annotationProcessor "io.micronaut:micronaut-inject-java"
-    annotationProcessor "io.micronaut.validation:micronaut-validation-processor"
-
-    compileOnly platform("io.micronaut.platform:micronaut-platform:$micronautVersion")
-    compileOnly "io.micronaut:micronaut-inject"
-    compileOnly "io.micronaut.validation:micronaut-validation"
-
+    
     // kestra
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
