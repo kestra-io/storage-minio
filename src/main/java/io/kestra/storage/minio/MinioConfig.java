@@ -1,31 +1,33 @@
 package io.kestra.storage.minio;
 
-import io.micronaut.context.annotation.ConfigurationProperties;
-import io.micronaut.core.convert.format.ReadableBytes;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import jakarta.inject.Singleton;
+public interface MinioConfig {
 
-@Singleton
-@Getter
-@ConfigurationProperties("kestra.storage.minio")
-public class MinioConfig {
-    String endpoint;
+    @JsonProperty
+    String getEndpoint();
 
-    int port;
+    @JsonProperty
+    int getPort();
 
-    String accessKey;
+    @JsonProperty
+    String getAccessKey();
 
-    String secretKey;
+    @JsonProperty
+    String getSecretKey();
 
-    String region;
+    @JsonProperty
+    String getRegion();
 
-    boolean secure;
+    @JsonProperty
+    boolean isSecure();
 
-    String bucket;
+    @JsonProperty
+    String getBucket();
 
-    boolean vhost;
+    @JsonProperty
+    boolean isVhost();
 
-    @ReadableBytes
-    long partSize = 1024*1024*5;
+    @JsonProperty
+    long getPartSize();
 }
