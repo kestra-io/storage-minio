@@ -51,7 +51,7 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
 
     // libs
-    api 'io.minio:minio:8.5.9'
+    api 'io.minio:minio:8.5.10'
 }
 
 
