@@ -1,33 +1,33 @@
 package io.kestra.storage.minio;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import io.kestra.core.models.annotations.PluginProperty;
 
 public interface MinioConfig {
-
-    @JsonProperty
+    
+    @PluginProperty
     String getEndpoint();
-
-    @JsonProperty
+    
+    @PluginProperty
     int getPort();
-
-    @JsonProperty
+    
+    @PluginProperty
     String getAccessKey();
-
-    @JsonProperty
+    
+    @PluginProperty
     String getSecretKey();
-
-    @JsonProperty
+    
+    @PluginProperty
     String getRegion();
-
-    @JsonProperty
+    
+    @PluginProperty
     boolean isSecure();
-
-    @JsonProperty
+    
+    @PluginProperty
     String getBucket();
-
-    @JsonProperty
+    
+    @PluginProperty
     boolean isVhost();
-
-    @JsonProperty
+    
+    @PluginProperty
     long getPartSize();
 }
