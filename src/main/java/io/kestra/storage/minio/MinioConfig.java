@@ -1,6 +1,7 @@
 package io.kestra.storage.minio;
 
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.storage.minio.internal.BytesSize;
 
 public interface MinioConfig {
     
@@ -29,5 +30,5 @@ public interface MinioConfig {
     boolean isVhost();
     
     @PluginProperty
-    long getPartSize();
+    BytesSize getPartSize();
 }

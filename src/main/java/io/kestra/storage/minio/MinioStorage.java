@@ -5,6 +5,7 @@ import com.google.common.collect.Streams;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
+import io.kestra.storage.minio.internal.BytesSize;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.messages.DeleteError;
@@ -51,7 +52,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     private String bucket;
     private boolean vhost;
     @Builder.Default
-    private long partSize = 1024 * 1024 * 5;
+    private BytesSize partSize = new BytesSize(1024 * 1024 * 5);
 
     @Getter(AccessLevel.PRIVATE)
     private MinioClient minioClient;
@@ -189,7 +190,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             this.minioClient.putObject(PutObjectArgs.builder()
                 .bucket(bucket)
                 .object(path)
-                .stream(data, -1, partSize)
+                .stream(data, -1, partSize.value())
                 .build()
             );
 
