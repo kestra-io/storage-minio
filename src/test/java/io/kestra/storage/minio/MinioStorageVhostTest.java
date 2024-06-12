@@ -2,7 +2,7 @@ package io.kestra.storage.minio;
 
 import io.kestra.core.storages.StorageInterface;
 import io.micronaut.context.annotation.Property;
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import io.kestra.core.junit.annotations.KestraTest;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
@@ -16,7 +16,7 @@ import java.net.URI;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 
-@MicronautTest
+@KestraTest
 @Property(name = "kestra.storage.minio.vhost", value = "true")
 class MinioStorageVhostTest {
 
