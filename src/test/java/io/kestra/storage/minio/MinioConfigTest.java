@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.OptionalLong;
 
 class MinioConfigTest {
 
@@ -32,7 +31,7 @@ class MinioConfigTest {
         HashMap<String, Object> config = new HashMap<>(DEFAULT_CONFIG);
         config.put("partSize", "50MB");
         MinioStorage storage = JacksonMapper.toMap(config, MinioStorage.class);
-        Assertions.assertEquals(BytesSize.of("50MB"), storage.getPartSize());
+        Assertions.assertEquals(new BytesSize("50MB"), storage.getPartSize());
         Assertions.assertEquals(new BytesSize(1024 * 1024 * 50), storage.getPartSize());
     }
 

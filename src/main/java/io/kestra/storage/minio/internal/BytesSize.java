@@ -10,7 +10,6 @@ import java.util.OptionalLong;
  *
  * @param value a string bytes size.
  */
-
 public record BytesSize(long value) {
 
     private static final String KILOBYTES = "KB";
@@ -18,20 +17,18 @@ public record BytesSize(long value) {
     private static final String GIGABYTES = "GB";
     private static final int KB_UNIT = 1024;
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public BytesSize {}
+
+    /**
+     * Constructor for a new {@link BytesSize} object from a given string.
+     *
+     * @param value a human-readable bytes size, e.g. 1KB, 1MB, 1GB.
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public BytesSize(final String value) {
         this(convert(value).orElseThrow(
             () -> new IllegalArgumentException(String.format("Cannot convert '%s' to long bytes size.", value))));
-    }
-
-    /**
-     * Factory method for constructing a new {@link BytesSize} object from a given string.
-     *
-     * @param value  a human-readable bytes size, e.g. 1KB, 1MB, 1GB.
-     * @return a new {@link BytesSize}.
-     */
-    @JsonCreator
-    public static BytesSize of(final String value) {
-        return new BytesSize(value);
     }
 
     private static OptionalLong convert(final String object) {
