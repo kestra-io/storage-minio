@@ -28,6 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -66,9 +67,10 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     @Override
     public InputStream get(String tenantId, URI uri) throws IOException {
         try {
+            String path = getPath(tenantId, uri);
             return this.minioClient.getObject(GetObjectArgs.builder()
                 .bucket(this.bucket)
-                .object(getPath(tenantId, uri))
+                .object(path)
                 .build()
             );
         } catch (MinioException e) {
@@ -124,8 +126,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                         && !name.equals("/")
                         && (recursive || Path.of(name).getParent() == null)
                         && (includeDirectories || !name.endsWith("/"));
-                })
-                .map(name -> name.startsWith("/") ? name : "/" + name);
+                });
         } catch (MinioException e) {
             throw reThrowMinioStorageException(prefix, e);
         } catch (FileNotFoundException | IllegalArgumentException e) {
@@ -207,7 +208,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     private void mkdirs(String path) throws IOException {
         path = path.replaceAll("^/*", "");
         String[] directories = path.split("/");
-        StringBuilder aggregatedPath = new StringBuilder("/");
+        StringBuilder aggregatedPath = new StringBuilder();
         // perform 1 put request per parent directory in the path
         for (int i = 0; i <= directories.length - (path.endsWith("/") ? 1 : 2); i++) {
             aggregatedPath.append(directories[i]).append("/");
@@ -383,33 +384,33 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     private String toPrefix(String path, boolean isDirectory) {
-        String withoutLeadingSlash = path.substring(1);
-        if(isDirectory && !withoutLeadingSlash.isBlank()) {
-            return withoutLeadingSlash.endsWith("/") ? withoutLeadingSlash : withoutLeadingSlash + "/";
+        boolean isRoot = path.isEmpty();
+        if(isDirectory && !isRoot) {
+            return path.endsWith("/") ? path : path + "/";
         }
 
-        return withoutLeadingSlash;
+        return path;
     }
 
     @NotNull
     private String getPath(String tenantId, URI uri) {
-        if (uri == null) {
-            uri = URI.create("/");
-        }
-
         parentTraversalGuard(uri);
-        String path = uri.getPath();
-        if (!path.startsWith("/")) {
-            path = "/" + path;
+        String path = Optional.ofNullable(uri).map(URI::getPath).orElse("");
+        if (path.startsWith("/")) {
+            path = path.substring(1);
         }
 
         if (tenantId == null) {
             return path;
         }
-        return "/" + tenantId + path;
+        return tenantId + "/"+ path;
     }
 
     private void parentTraversalGuard(URI uri) {
+        if (uri == null) {
+            return;
+        }
+
         if (uri.toString().contains("..")) {
             throw new IllegalArgumentException("File should be accessed with their full path and not using relative '..' path.");
         }
@@ -423,7 +424,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @VisibleForTesting
-    MinioClient miniClient() {
+    MinioClient minioClient() {
         return minioClient;
     }
 }
