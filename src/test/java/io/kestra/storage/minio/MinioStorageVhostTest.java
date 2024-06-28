@@ -24,7 +24,7 @@ class MinioStorageVhostTest {
     StorageInterface storage;
     @BeforeEach
     void init() throws Exception {
-        MinioClient minioClient = ((MinioStorage) storage).miniClient();
+        MinioClient minioClient = ((MinioStorage) storage).minioClient();
         if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(((MinioStorage) storage).getBucket()).build())) {
             minioClient.makeBucket(MakeBucketArgs.builder().bucket(((MinioStorage) storage).getBucket()).build());
         }
@@ -33,7 +33,7 @@ class MinioStorageVhostTest {
     @Test
     void checkVhostOn() throws Exception {
         ByteArrayOutputStream traceStream = new ByteArrayOutputStream();
-        MinioClient minioClient = ((MinioStorage) storage).miniClient();
+        MinioClient minioClient = ((MinioStorage) storage).minioClient();
         minioClient.traceOn(traceStream);
         try {
             storage.list(null, URI.create("/"));

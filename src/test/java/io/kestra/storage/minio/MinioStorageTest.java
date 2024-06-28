@@ -22,20 +22,20 @@ class MinioStorageTest extends StorageTestSuite {
     @BeforeEach
     void init() throws Exception {
         String bucket = ((MinioStorage) storage).getBucket();
-        if (!((MinioStorage) storage).miniClient().bucketExists(BucketExistsArgs.builder().bucket(bucket).build())) {
-            ((MinioStorage) storage).miniClient().makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
+        if (!((MinioStorage) storage).minioClient().bucketExists(BucketExistsArgs.builder().bucket(bucket).build())) {
+            ((MinioStorage) storage).minioClient().makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
         }
     }
 
     @Test
     void checkVhostOff() throws Exception {
         ByteArrayOutputStream traceStream = new ByteArrayOutputStream();
-        ((MinioStorage) storage).miniClient().traceOn(traceStream);
+        ((MinioStorage) storage).minioClient().traceOn(traceStream);
         try {
             storage.list(null, URI.create("/"));
             assertThat(traceStream.toString(), containsString("Host: " + ((MinioStorage) storage).getEndpoint()));
         } finally {
-            ((MinioStorage) storage).miniClient().traceOff();
+            ((MinioStorage) storage).minioClient().traceOff();
         }
     }
 }
