@@ -5,6 +5,7 @@ import com.google.common.collect.Streams;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
+import io.kestra.core.storages.StorageObject;
 import io.kestra.storage.minio.internal.BytesSize;
 import io.minio.*;
 import io.minio.errors.*;
@@ -25,10 +26,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -68,11 +66,29 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     public InputStream get(String tenantId, URI uri) throws IOException {
         try {
             String path = getPath(tenantId, uri);
+
             return this.minioClient.getObject(GetObjectArgs.builder()
                 .bucket(this.bucket)
                 .object(path)
                 .build()
             );
+        } catch (MinioException e) {
+            throw reThrowMinioStorageException(uri.toString(), e);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IOException(e);
+        }
+    }
+
+    @Override
+    public StorageObject getWithMetadata(String tenantId, URI uri) throws IOException {
+        try {
+            String path = getPath(tenantId, uri);
+            Map<String, String> metadata = this.minioClient.statObject(StatObjectArgs.builder()
+                .bucket(this.bucket)
+                .object(path)
+                .build()).userMetadata();
+
+            return new StorageObject(metadata, this.get(tenantId, uri));
         } catch (MinioException e) {
             throw reThrowMinioStorageException(uri.toString(), e);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
@@ -184,18 +200,17 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public URI put(String tenantId, URI uri, InputStream data) throws IOException {
+    public URI put(String tenantId, URI uri, StorageObject storageObject) throws IOException {
         String path = getPath(tenantId, uri);
         mkdirs(path);
-        try {
+        try (InputStream data = storageObject.inputStream()) {
             this.minioClient.putObject(PutObjectArgs.builder()
                 .bucket(bucket)
                 .object(path)
+                .userMetadata(storageObject.metadata())
                 .stream(data, -1, partSize.value())
                 .build()
             );
-
-            data.close();
         } catch (MinioException e) {
             throw reThrowMinioStorageException(uri.toString(), e);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
