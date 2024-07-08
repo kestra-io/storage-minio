@@ -5,6 +5,8 @@ import io.minio.StatObjectResponse;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.Map;
+
 @Value
 @Builder
 public class MinioFileAttributes implements FileAttributes {
@@ -30,5 +32,10 @@ public class MinioFileAttributes implements FileAttributes {
     @Override
     public long getSize() {
         return stat.size();
+    }
+
+    @Override
+    public Map<String, String> getMetadata() {
+        return stat.userMetadata();
     }
 }
