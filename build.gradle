@@ -94,8 +94,8 @@ dependencies {
     testAnnotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
 
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
-    testImplementation "org.hamcrest:hamcrest:2.2"
-    testImplementation "org.hamcrest:hamcrest-library:2.2"
+    testImplementation "org.hamcrest:hamcrest"
+    testImplementation "org.hamcrest:hamcrest-library"
 
 }
 
