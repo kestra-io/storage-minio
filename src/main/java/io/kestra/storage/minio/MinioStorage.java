@@ -202,7 +202,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     @Override
     public URI put(String tenantId, URI uri, StorageObject storageObject) throws IOException {
         String path = getPath(tenantId, uri);
-        mkdirs(path);
         try (InputStream data = storageObject.inputStream()) {
             this.minioClient.putObject(PutObjectArgs.builder()
                 .bucket(bucket)
