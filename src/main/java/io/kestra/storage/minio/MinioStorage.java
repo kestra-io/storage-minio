@@ -155,9 +155,13 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @Override
     public boolean exists(String tenantId, URI uri) {
+        String path = getPath(tenantId, uri);
+        return exists(path);
+    }
+
+    private boolean exists(String path) {
         // There is no way to check if an object exist so we gather the stat of the object which will throw an exception
         // if the object didn't exist.
-        String path = getPath(tenantId, uri);
         try {
             this.minioClient.statObject(StatObjectArgs.builder()
                 .bucket(bucket)
@@ -221,11 +225,19 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     private void mkdirs(String path) throws IOException {
-        path = path.replaceAll("^/*", "");
+        if (!path.endsWith("/")) {
+            path = path.substring(0, path.lastIndexOf("/") + 1);
+        }
+
+        // check if it exists before creating it
+        if (exists(path)) {
+            return;
+        }
+
         String[] directories = path.split("/");
         StringBuilder aggregatedPath = new StringBuilder();
         // perform 1 put request per parent directory in the path
-        for (int i = 0; i <= directories.length - (path.endsWith("/") ? 1 : 2); i++) {
+        for (int i = 0; i < directories.length; i++) {
             aggregatedPath.append(directories[i]).append("/");
             try {
                 this.minioClient.putObject(PutObjectArgs.builder()
