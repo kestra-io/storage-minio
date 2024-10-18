@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -41,6 +42,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Plugin
 @Plugin.Id("minio")
 public class MinioStorage implements StorageInterface, MinioConfig {
+    private static final Pattern METADATA_KEY_WORD_SEPARATOR = Pattern.compile("_([a-z])");
+    private static final Pattern UPPERCASE = Pattern.compile("([A-Z])");
 
     private String endpoint;
     private int port;
@@ -56,10 +59,12 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     @Getter(AccessLevel.PRIVATE)
     private MinioClient minioClient;
 
-    /** {@inheritDoc} **/
+    /**
+     * {@inheritDoc}
+     **/
     @Override
     public void init() {
-       this.minioClient = MinioClientFactory.of(this);
+        this.minioClient = MinioClientFactory.of(this);
     }
 
     @Override
@@ -83,10 +88,10 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     public StorageObject getWithMetadata(String tenantId, URI uri) throws IOException {
         try {
             String path = getPath(tenantId, uri);
-            Map<String, String> metadata = this.minioClient.statObject(StatObjectArgs.builder()
+            Map<String, String> metadata = toRetrievedMetadata(this.minioClient.statObject(StatObjectArgs.builder()
                 .bucket(this.bucket)
                 .object(path)
-                .build()).userMetadata();
+                .build()).userMetadata());
 
             return new StorageObject(metadata, this.get(tenantId, uri));
         } catch (MinioException e) {
@@ -211,7 +216,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             this.minioClient.putObject(PutObjectArgs.builder()
                 .bucket(bucket)
                 .object(path)
-                .userMetadata(storageObject.metadata())
+                .userMetadata(toStoredMetadata(storageObject.metadata()))
                 .stream(data, -1, partSize.value())
                 .build()
             );
@@ -412,7 +417,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     private String toPrefix(String path, boolean isDirectory) {
         boolean isRoot = path.isEmpty();
-        if(isDirectory && !isRoot) {
+        if (isDirectory && !isRoot) {
             return path.endsWith("/") ? path : path + "/";
         }
 
@@ -430,7 +435,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         if (tenantId == null) {
             return path;
         }
-        return tenantId + "/"+ path;
+        return tenantId + "/" + path;
     }
 
     private void parentTraversalGuard(URI uri) {
@@ -448,6 +453,27 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             return new FileNotFoundException(uri + " (File not found)");
         }
         return new IOException(e);
+    }
+
+    private Map<String, String> toStoredMetadata(Map<String, String> metadata) {
+        if (metadata == null) {
+            return null;
+        }
+        return metadata.entrySet().stream()
+            .map(entry -> Map.entry(UPPERCASE.matcher(entry.getKey()).replaceAll("_$1").toLowerCase(), entry.getValue()))
+            .collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
+    }
+
+    private Map<String, String> toRetrievedMetadata(Map<String, String> metadata) {
+        if (metadata == null) {
+            return null;
+        }
+        return metadata.entrySet().stream()
+            .map(entry -> Map.entry(
+                METADATA_KEY_WORD_SEPARATOR.matcher(entry.getKey())
+                    .replaceAll(matchResult -> matchResult.group(1).toUpperCase()),
+                entry.getValue()
+            )).collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
     }
 
     @VisibleForTesting
