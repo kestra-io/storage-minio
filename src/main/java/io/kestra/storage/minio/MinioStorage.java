@@ -226,7 +226,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             throw new IOException(e);
         }
 
-        return URI.create("kestra://" + uri.getPath());
+        return URI.create("kestra://" + uri.getRawPath());
     }
 
     private void mkdirs(String path) throws IOException {
