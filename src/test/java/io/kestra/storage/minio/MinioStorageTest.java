@@ -32,7 +32,7 @@ class MinioStorageTest extends StorageTestSuite {
         ByteArrayOutputStream traceStream = new ByteArrayOutputStream();
         ((MinioStorage) storage).minioClient().traceOn(traceStream);
         try {
-            storage.list(null, URI.create("/"));
+            storage.list(null, null, URI.create("/"));
             assertThat(traceStream.toString(), containsString("Host: " + ((MinioStorage) storage).getEndpoint()));
         } finally {
             ((MinioStorage) storage).minioClient().traceOff();
