@@ -21,6 +21,7 @@ import lombok.extern.jackson.Jacksonized;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nullable;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
@@ -68,7 +69,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public InputStream get(String tenantId, URI uri) throws IOException {
+    public InputStream get(String tenantId, @Nullable String namespace, URI uri) throws IOException {
         try {
             String path = getPath(tenantId, uri);
 
@@ -85,7 +86,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public StorageObject getWithMetadata(String tenantId, URI uri) throws IOException {
+    public StorageObject getWithMetadata(String tenantId, @Nullable String namespace, URI uri) throws IOException {
         try {
             String path = getPath(tenantId, uri);
             Map<String, String> metadata = toRetrievedMetadata(this.minioClient.statObject(StatObjectArgs.builder()
@@ -93,7 +94,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 .object(path)
                 .build()).userMetadata());
 
-            return new StorageObject(metadata, this.get(tenantId, uri));
+            return new StorageObject(metadata, this.get(tenantId, namespace, uri));
         } catch (MinioException e) {
             throw reThrowMinioStorageException(uri.toString(), e);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
@@ -102,7 +103,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public List<URI> allByPrefix(String tenantId, URI prefix, boolean includeDirectories) throws IOException {
+    public List<URI> allByPrefix(String tenantId, @Nullable String namespace, URI prefix, boolean includeDirectories) throws IOException {
         String internalStoragePrefix = getPath(tenantId, prefix);
         String prefixForMinio = toPrefix(internalStoragePrefix, false);
         return keysForPrefix(prefixForMinio, true, includeDirectories)
@@ -111,7 +112,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public List<FileAttributes> list(String tenantId, URI uri) throws IOException {
+    public List<FileAttributes> list(String tenantId, @Nullable String namespace, URI uri) throws IOException {
         try {
             String prefix = toPrefix(getPath(tenantId, uri), true);
             List<FileAttributes> list = keysForPrefix(prefix, false, true)
@@ -119,7 +120,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 .toList();
             if (list.isEmpty()) {
                 // this will throw FileNotFound if there is no directory
-                this.getAttributes(tenantId, uri);
+                this.getAttributes(tenantId, namespace, uri);
             }
             return list;
         } catch (FileNotFoundException | IllegalArgumentException e) {
@@ -159,7 +160,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
 
     @Override
-    public boolean exists(String tenantId, URI uri) {
+    public boolean exists(String tenantId, @Nullable String namespace, URI uri) {
         String path = getPath(tenantId, uri);
         return exists(path);
     }
@@ -180,9 +181,9 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public FileAttributes getAttributes(String tenantId, URI uri) throws IOException {
+    public FileAttributes getAttributes(String tenantId, @Nullable String namespace, URI uri) throws IOException {
         String path = getPath(tenantId, uri);
-        if (!path.endsWith("/") && !exists(tenantId, uri)) {
+        if (!path.endsWith("/") && !exists(tenantId, namespace, uri)) {
             // if key does not exist we try to get the "directory" (directory are just object ending with /)
             path = path + "/";
         }
@@ -209,7 +210,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public URI put(String tenantId, URI uri, StorageObject storageObject) throws IOException {
+    public URI put(String tenantId, @Nullable String namespace, URI uri, StorageObject storageObject) throws IOException {
         String path = getPath(tenantId, uri);
         mkdirs(path);
         try (InputStream data = storageObject.inputStream()) {
@@ -258,15 +259,15 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public boolean delete(String tenantId, URI uri) throws IOException {
+    public boolean delete(String tenantId, @Nullable String namespace, URI uri) throws IOException {
         FileAttributes fileAttributes;
         try {
-            fileAttributes = getAttributes(tenantId, uri);
+            fileAttributes = getAttributes(tenantId, namespace, uri);
         } catch (FileNotFoundException e) {
             return false;
         }
         if (fileAttributes.getType() == FileAttributes.FileType.Directory) {
-            return !deleteByPrefix(tenantId, uri.getPath().endsWith("/") ? uri : URI.create(uri + "/")).isEmpty();
+            return !deleteByPrefix(tenantId, namespace, uri.getPath().endsWith("/") ? uri : URI.create(uri + "/")).isEmpty();
         }
 
         try {
@@ -284,7 +285,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public URI createDirectory(String tenantId, URI uri) throws IOException {
+    public URI createDirectory(String tenantId, @Nullable String namespace, URI uri) throws IOException {
         String path = getPath(tenantId, uri);
         if (!path.endsWith("/")) {
             // Directory are just objects ending with a /
@@ -309,13 +310,13 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public URI move(String tenantId, URI from, URI to) throws IOException {
+    public URI move(String tenantId, @Nullable String namespace, URI from, URI to) throws IOException {
         String source = getPath(tenantId, from);
         String dest = getPath(tenantId, to);
         List<DeleteObject> toDelete = new ArrayList<>();
 
         try {
-            FileAttributes attributes = getAttributes(tenantId, from);
+            FileAttributes attributes = getAttributes(tenantId, namespace, from);
             if (attributes.getType() == FileAttributes.FileType.Directory) {
                 String sourcePrefix = toPrefix(source, true);
                 Iterable<Result<Item>> results = this.minioClient.listObjects(ListObjectsArgs.builder()
@@ -366,7 +367,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
-    public List<URI> deleteByPrefix(String tenantId, URI storagePrefix) throws IOException {
+    public List<URI> deleteByPrefix(String tenantId, @Nullable String namespace, URI storagePrefix) throws IOException {
         List<Pair<String, DeleteObject>> deleted = Streams
             .stream(this.minioClient
                 .listObjects(ListObjectsArgs.builder()
