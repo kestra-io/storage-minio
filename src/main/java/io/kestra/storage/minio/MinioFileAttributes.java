@@ -8,11 +8,20 @@ import lombok.Value;
 import java.util.Map;
 
 @Value
-@Builder
 public class MinioFileAttributes implements FileAttributes {
     String fileName;
     StatObjectResponse stat;
     boolean isDirectory;
+    Map<String, String> metadata;
+
+    @Builder
+    public MinioFileAttributes(String fileName, StatObjectResponse stat, boolean isDirectory) {
+        this.fileName = fileName;
+        this.stat = stat;
+        this.isDirectory = isDirectory;
+
+        this.metadata = MetadataUtils.toRetrievedMetadata(stat.userMetadata());
+    }
 
     @Override
     public long getLastModifiedTime() {
@@ -36,6 +45,6 @@ public class MinioFileAttributes implements FileAttributes {
 
     @Override
     public Map<String, String> getMetadata() {
-        return stat.userMetadata();
+        return metadata;
     }
 }
