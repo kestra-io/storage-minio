@@ -435,16 +435,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         return tenantId + "/" + path;
     }
 
-    private void parentTraversalGuard(URI uri) {
-        if (uri == null) {
-            return;
-        }
-
-        if (uri.toString().contains("..")) {
-            throw new IllegalArgumentException("File should be accessed with their full path and not using relative '..' path.");
-        }
-    }
-
     private IOException reThrowMinioStorageException(String uri, MinioException e) {
         if (e instanceof ErrorResponseException && ((ErrorResponseException) e).errorResponse().code().equals("NoSuchKey")) {
             return new FileNotFoundException(uri + " (File not found)");
