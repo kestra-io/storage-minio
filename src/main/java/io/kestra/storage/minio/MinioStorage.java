@@ -21,7 +21,7 @@ import lombok.extern.jackson.Jacksonized;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
