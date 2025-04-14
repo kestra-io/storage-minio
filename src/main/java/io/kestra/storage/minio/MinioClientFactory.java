@@ -1,5 +1,6 @@
 package io.kestra.storage.minio;
 
+import io.kestra.storage.minio.domains.ProxyConfiguration;
 import io.minio.MinioClient;
 import io.minio.credentials.AwsConfigProvider;
 import io.minio.credentials.AwsEnvironmentProvider;
@@ -8,6 +9,9 @@ import io.minio.credentials.IamAwsProvider;
 import io.minio.credentials.MinioEnvironmentProvider;
 import io.minio.credentials.Provider;
 import io.minio.credentials.StaticProvider;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
 
 public class MinioClientFactory {
@@ -21,8 +25,10 @@ public class MinioClientFactory {
             if (config.getRegion() != null) {
                 bdr.region(config.getRegion());
             }
-            
+
             bdr.credentialsProvider(getCredentialProvider(config));
+
+            bdr.httpClient(createHttpClient(config));
 
             MinioClient build = bdr.build();
 
@@ -34,6 +40,27 @@ public class MinioClientFactory {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static OkHttpClient createHttpClient(MinioConfig config) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        ProxyConfiguration proxyConf = config.getProxyConfiguration();
+        if (proxyConf != null && proxyConf.getType() != Proxy.Type.DIRECT) {
+            Proxy proxy = new Proxy(proxyConf.getType(),
+                new InetSocketAddress(proxyConf.getAddress(), proxyConf.getPort()));
+            builder.proxy(proxy);
+
+            if (proxyConf.getUsername() != null && proxyConf.getPassword() != null) {
+                builder.proxyAuthenticator((route, response) -> {
+                    String credential = okhttp3.Credentials.basic(proxyConf.getUsername(), proxyConf.getPassword());
+                    return response.request().newBuilder()
+                        .header("Proxy-Authorization", credential)
+                        .build();
+                });
+            }
+        }
+
+        return builder.build();
     }
 
     @NotNull

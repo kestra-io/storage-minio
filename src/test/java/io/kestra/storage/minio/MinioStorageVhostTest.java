@@ -18,6 +18,8 @@ import static org.hamcrest.Matchers.containsString;
 
 @KestraTest
 @Property(name = "kestra.storage.minio.vhost", value = "true")
+@Property(name = "kestra.storage.minio.endpoint", value = "localhost")
+@Property(name = "kestra.storage.minio.proxyConfiguration.type", value = "DIRECT")
 class MinioStorageVhostTest {
 
     @Inject
