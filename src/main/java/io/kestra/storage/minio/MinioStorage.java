@@ -6,6 +6,7 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.storages.StorageObject;
+import io.kestra.storage.minio.domains.ProxyConfiguration;
 import io.kestra.storage.minio.internal.BytesSize;
 import io.minio.*;
 import io.minio.errors.*;
@@ -50,6 +51,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     private boolean secure;
     private String bucket;
     private boolean vhost;
+    private ProxyConfiguration proxyConfiguration;
     @Builder.Default
     private BytesSize partSize = new BytesSize(1024 * 1024 * 5);
 
@@ -245,7 +247,8 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 this.minioClient.putObject(PutObjectArgs.builder()
                     .bucket(bucket)
                     .object(aggregatedPath.toString())
-                    .stream(new ByteArrayInputStream(new byte[]{}), 0, -1)
+                    .stream(new ByteArrayInputStream(new byte[0]), 0, 0)
+                    .contentType("application/x-directory")
                     .build()
                 );
             } catch (Exception e) {
