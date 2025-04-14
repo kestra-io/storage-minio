@@ -15,3 +15,9 @@ services:
     ports:
       - 9000:9000
 
+  mitmproxy:
+    image: mitmproxy/mitmproxy
+    ports:
+      - "8888:8080"  # MITM proxy listens on 8080 inside container by default
+    command: mitmdump --mode regular --listen-port 8080
+
