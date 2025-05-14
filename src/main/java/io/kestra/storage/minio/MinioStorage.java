@@ -22,7 +22,10 @@ import lombok.extern.jackson.Jacksonized;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
@@ -43,6 +46,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Plugin
 @Plugin.Id("minio")
 public class MinioStorage implements StorageInterface, MinioConfig {
+    private static final Logger LOG = LoggerFactory.getLogger(MinioStorage.class);
+
     private String endpoint;
     private int port;
     private String accessKey;
@@ -448,5 +453,16 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     @VisibleForTesting
     MinioClient minioClient() {
         return minioClient;
+    }
+
+    @Override
+    public void close() {
+        if (this.minioClient != null) {
+            try {
+                this.minioClient.close();
+            } catch (Exception e) {
+                LOG.warn("Failed to close GcsStorage", e);
+            }
+        }
     }
 }
