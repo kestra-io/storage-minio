@@ -429,20 +429,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         return path;
     }
 
-    @NotNull
-    private String getPath(String tenantId, URI uri) {
-        parentTraversalGuard(uri);
-        String path = Optional.ofNullable(uri).map(URI::getPath).orElse("");
-        if (path.startsWith("/")) {
-            path = path.substring(1);
-        }
-
-        if (tenantId == null) {
-            return path;
-        }
-        return tenantId + "/" + path;
-    }
-
     private IOException reThrowMinioStorageException(String uri, MinioException e) {
         if (e instanceof ErrorResponseException && ((ErrorResponseException) e).errorResponse().code().equals("NoSuchKey")) {
             return new FileNotFoundException(uri + " (File not found)");
