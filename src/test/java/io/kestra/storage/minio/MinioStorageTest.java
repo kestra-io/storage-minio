@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 
+import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 
@@ -32,7 +33,7 @@ class MinioStorageTest extends StorageTestSuite {
         ByteArrayOutputStream traceStream = new ByteArrayOutputStream();
         ((MinioStorage) storage).minioClient().traceOn(traceStream);
         try {
-            storage.list(null, null, URI.create("/"));
+            storage.list(MAIN_TENANT, null, URI.create("/"));
             assertThat(traceStream.toString(), containsString("Host: " + ((MinioStorage) storage).getEndpoint()));
         } finally {
             ((MinioStorage) storage).minioClient().traceOff();
