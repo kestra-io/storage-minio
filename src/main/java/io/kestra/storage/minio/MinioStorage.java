@@ -73,9 +73,16 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @Override
     public InputStream get(String tenantId, @Nullable String namespace, URI uri) throws IOException {
-        try {
-            String path = getPath(tenantId, uri);
+        return getFromMinio(uri, getPath(tenantId, uri));
+    }
 
+    @Override
+    public InputStream getInstanceResource(String namespace, URI uri) throws IOException {
+        return getFromMinio(uri, getPath(uri));
+    }
+
+    private GetObjectResponse getFromMinio(URI uri, String path) throws IOException {
+        try {
             return this.minioClient.getObject(GetObjectArgs.builder()
                 .bucket(this.bucket)
                 .object(path)
@@ -133,6 +140,25 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         }
     }
 
+    @Override
+    public List<FileAttributes> listInstanceResource(String namespace, URI uri) throws IOException {
+        try {
+            String prefix = toPrefix(getPath(uri), true);
+            List<FileAttributes> list = keysForPrefix(prefix, false, true)
+                .map(throwFunction(this::getFileAttributes))
+                .toList();
+            if (list.isEmpty()) {
+                // this will throw FileNotFound if there is no directory
+                this.getInstanceAttributes(namespace, uri);
+            }
+            return list;
+        } catch (FileNotFoundException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
+    }
+
     private Stream<String> keysForPrefix(String prefix, boolean recursive, boolean includeDirectories) throws IOException {
         try {
             Iterable<Result<Item>> results = this.minioClient.listObjects(ListObjectsArgs.builder()
@@ -164,8 +190,12 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @Override
     public boolean exists(String tenantId, @Nullable String namespace, URI uri) {
-        String path = getPath(tenantId, uri);
-        return exists(path);
+        return exists(getPath(tenantId, uri));
+    }
+
+    @Override
+    public boolean existsInstanceResource(@Nullable String namespace, URI uri) {
+        return exists(getPath(uri));
     }
 
     private boolean exists(String path) {
@@ -193,6 +223,16 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         return getFileAttributes(path);
     }
 
+    @Override
+    public FileAttributes getInstanceAttributes(String namespace, URI uri) throws IOException {
+        String path = getPath(uri);
+        if (!path.endsWith("/") && !existsInstanceResource(namespace, uri)) {
+            // if key does not exist we try to get the "directory" (directory are just object ending with /)
+            path = path + "/";
+        }
+        return getFileAttributes(path);
+    }
+
     private FileAttributes getFileAttributes(String path) throws IOException {
         try {
             StatObjectResponse stat = this.minioClient.statObject(StatObjectArgs.builder()
@@ -214,7 +254,15 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @Override
     public URI put(String tenantId, @Nullable String namespace, URI uri, StorageObject storageObject) throws IOException {
-        String path = getPath(tenantId, uri);
+        return put(uri, storageObject, getPath(tenantId, uri));
+    }
+
+    @Override
+    public URI putInstanceResource(@org.jetbrains.annotations.Nullable String namespace, URI uri, StorageObject storageObject) throws IOException {
+        return put(uri, storageObject, getPath(uri));
+    }
+
+    private URI put(URI uri, StorageObject storageObject, String path) throws IOException {
         mkdirs(path);
         try (InputStream data = storageObject.inputStream()) {
             this.minioClient.putObject(PutObjectArgs.builder()
@@ -289,8 +337,43 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     @Override
+    public boolean deleteInstanceResource(String namespace, URI uri) throws IOException {
+        FileAttributes fileAttributes;
+        try {
+            fileAttributes = getInstanceAttributes(namespace, uri);
+        } catch (FileNotFoundException e) {
+            return false;
+        }
+        if (fileAttributes.getType() == FileAttributes.FileType.Directory) {
+            return !deleteByPrefix(null, namespace, uri.getPath().endsWith("/") ? uri : URI.create(uri + "/")).isEmpty();
+        }
+
+        try {
+            this.minioClient.removeObject(
+                RemoveObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(getPath(uri))
+                    .build()
+            );
+
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
     public URI createDirectory(String tenantId, @Nullable String namespace, URI uri) throws IOException {
-        String path = getPath(tenantId, uri);
+        return createDirectory(uri, getPath(tenantId, uri));
+    }
+
+    @Override
+    public URI createInstanceDirectory(String namespace, URI uri) throws IOException {
+        return createDirectory(uri, getPath(uri));
+    }
+
+    @NotNull
+    private URI createDirectory(URI uri, String path) throws IOException {
         if (!path.endsWith("/")) {
             // Directory are just objects ending with a /
             path = path + "/";
@@ -372,11 +455,12 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @Override
     public List<URI> deleteByPrefix(String tenantId, @Nullable String namespace, URI storagePrefix) throws IOException {
+        String path = tenantId == null ? getPath(storagePrefix) : getPath(tenantId, storagePrefix);
         List<Pair<String, DeleteObject>> deleted = Streams
             .stream(this.minioClient
                 .listObjects(ListObjectsArgs.builder()
                     .bucket(bucket)
-                    .prefix(toPrefix(getPath(tenantId, storagePrefix), false))
+                    .prefix(toPrefix(path, false))
                     .recursive(true)
                     .build()
                 )
