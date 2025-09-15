@@ -498,7 +498,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         return deleted
             .stream()
             .map(Pair::getLeft)
-            .map(name -> name.replace(tenantId + "/", ""))
+            .map(name -> name.replaceFirst(tenantId + "/", ""))
             .map(name -> name.endsWith("/") ? name.substring(0, name.length() - 1) : name)
             .map(name -> URI.create("kestra:///" + name))
             .collect(Collectors.toList());
