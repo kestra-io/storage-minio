@@ -531,7 +531,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             try {
                 this.minioClient.close();
             } catch (Exception e) {
-                LOG.warn("Failed to close GcsStorage", e);
+                LOG.warn("Failed to close MinIO client", e);
             }
         }
     }
