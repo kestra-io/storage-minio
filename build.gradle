@@ -50,7 +50,7 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
 
     // libs
-    api ('io.minio:minio:8.5.17') {
+    api ('io.minio:minio:8.6.0') {
         exclude (group: 'com.fasterxml.jackson.core', module: 'jackson-core')
         exclude (group: 'com.fasterxml.jackson.core', module: 'jackson-databind')
         exclude (group: 'com.fasterxml.jackson.core', module: 'jackson-annotations')
