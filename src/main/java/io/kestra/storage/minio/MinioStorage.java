@@ -1,5 +1,6 @@
 package io.kestra.storage.minio;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Streams;
 import io.kestra.core.models.annotations.Plugin;
@@ -42,6 +43,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @NoArgsConstructor
 @Builder
 @Jacksonized
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Getter
 @Plugin
 @Plugin.Id("minio")
