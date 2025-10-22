@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.extern.jackson.Jacksonized;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -49,6 +51,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Plugin.Id("minio")
 public class MinioStorage implements StorageInterface, MinioConfig {
     private static final Logger LOG = LoggerFactory.getLogger(MinioStorage.class);
+    private static final int MAX_OBJECT_NAME_LENGTH = 255;
 
     private String endpoint;
     private int port;
@@ -256,12 +259,14 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @Override
     public URI put(String tenantId, @Nullable String namespace, URI uri, StorageObject storageObject) throws IOException {
-        return put(uri, storageObject, getPath(tenantId, uri));
+        URI limited = limit(uri);
+        return put(limited, storageObject, getPath(tenantId, limited));
     }
 
     @Override
-    public URI putInstanceResource(@org.jetbrains.annotations.Nullable String namespace, URI uri, StorageObject storageObject) throws IOException {
-        return put(uri, storageObject, getPath(uri));
+    public URI putInstanceResource(@Nullable String namespace, URI uri, StorageObject storageObject) throws IOException {
+        URI limited = limit(uri);
+        return put(limited, storageObject, getPath(limited));
     }
 
     private URI put(URI uri, StorageObject storageObject, String path) throws IOException {
@@ -280,7 +285,28 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             throw new IOException(e);
         }
 
-        return URI.create("kestra://" + uri.getRawPath());
+        return URI.create("kestra://" + uri.getPath());
+    }
+
+    private URI limit(URI uri) throws IOException {
+        if (uri == null) {
+            return null;
+        }
+
+        String path = uri.getPath();
+        String objectName = path.contains("/") ? path.substring(path.lastIndexOf("/") + 1) : path;
+        if (objectName.length() > MAX_OBJECT_NAME_LENGTH) {
+            objectName = objectName.substring(objectName.length() - MAX_OBJECT_NAME_LENGTH + 6);
+            // we add a 5 chars prefix to void possible duplicate file names
+            String prefix = RandomStringUtils.secure().nextAlphanumeric(5).toLowerCase();
+            String newPath = (path.contains("/") ? path.substring(0, path.lastIndexOf("/") + 1) : "") + prefix + "-" + objectName;
+            try {
+                return new URI(uri.getScheme(), uri.getHost(), newPath, uri.getFragment());
+            } catch (URISyntaxException e) {
+                throw new IOException(e);
+            }
+        }
+        return uri;
     }
 
     private void mkdirs(String path) throws IOException {
