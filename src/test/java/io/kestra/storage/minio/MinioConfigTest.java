@@ -41,4 +41,11 @@ class MinioConfigTest {
         config.put("partSize", "50TB"); // not supported
         Assertions.assertThrows(IllegalArgumentException.class, () -> JacksonMapper.toMap(config, MinioStorage.class));
     }
+
+    @Test
+    void shouldAcceptUnknownProperty() {
+        HashMap<String, Object> config = new HashMap<>(DEFAULT_CONFIG);
+        config.put("foo", "bar"); // unknown
+        Assertions.assertDoesNotThrow(() -> JacksonMapper.toMap(config, MinioStorage.class));
+    }
 }
