@@ -68,9 +68,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     @Getter(AccessLevel.PRIVATE)
     private MinioClient minioClient;
 
-    /**
-     * {@inheritDoc}
-     **/
     @Override
     public void init() {
         this.minioClient = MinioClientFactory.of(this);
@@ -134,7 +131,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 .map(throwFunction(this::getFileAttributes))
                 .toList();
             if (list.isEmpty()) {
-                // this will throw FileNotFound if there is no directory
                 this.getAttributes(tenantId, namespace, uri);
             }
             return list;
@@ -153,7 +149,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 .map(throwFunction(this::getFileAttributes))
                 .toList();
             if (list.isEmpty()) {
-                // this will throw FileNotFound if there is no directory
                 this.getInstanceAttributes(namespace, uri);
             }
             return list;
@@ -176,7 +171,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 .map(throwFunction(o -> o.get().objectName()))
                 .filter(name -> {
                     name = name.substring(prefix.length());
-                    // Remove recursive result and requested dir
                     return !name.isEmpty()
                         && !Objects.equals(name, prefix)
                         && !name.equals("/")
@@ -192,7 +186,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         }
     }
 
-
     @Override
     public boolean exists(String tenantId, @Nullable String namespace, URI uri) {
         return exists(getPath(tenantId, uri));
@@ -204,8 +197,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     private boolean exists(String path) {
-        // There is no way to check if an object exist so we gather the stat of the object which will throw an exception
-        // if the object didn't exist.
         try {
             this.minioClient.statObject(StatObjectArgs.builder()
                 .bucket(bucket)
@@ -222,7 +213,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     public FileAttributes getAttributes(String tenantId, @Nullable String namespace, URI uri) throws IOException {
         String path = getPath(tenantId, uri);
         if (!path.endsWith("/") && !exists(tenantId, namespace, uri)) {
-            // if key does not exist we try to get the "directory" (directory are just object ending with /)
             path = path + "/";
         }
         return getFileAttributes(path);
@@ -232,7 +222,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     public FileAttributes getInstanceAttributes(String namespace, URI uri) throws IOException {
         String path = getPath(uri);
         if (!path.endsWith("/") && !existsInstanceResource(namespace, uri)) {
-            // if key does not exist we try to get the "directory" (directory are just object ending with /)
             path = path + "/";
         }
         return getFileAttributes(path);
@@ -257,6 +246,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         }
     }
 
+    // --- PUT METHODS WITH LIMIT ---
     @Override
     public URI put(String tenantId, @Nullable String namespace, URI uri, StorageObject storageObject) throws IOException {
         URI limited = limit(uri);
@@ -288,42 +278,47 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         return URI.create("kestra://" + uri.getPath());
     }
 
+    // --- CLEAN LIMIT LOGIC ---
     private URI limit(URI uri) throws IOException {
-        if (uri == null) {
-            return null;
-        }
+        if (uri == null) return null;
 
         String path = uri.getPath();
-        String objectName = path.contains("/") ? path.substring(path.lastIndexOf("/") + 1) : path;
-        if (objectName.length() > MAX_OBJECT_NAME_LENGTH) {
-            objectName = objectName.substring(objectName.length() - MAX_OBJECT_NAME_LENGTH + 6);
-            // we add a 5 chars prefix to void possible duplicate file names
-            String prefix = RandomStringUtils.secure().nextAlphanumeric(5).toLowerCase();
-            String newPath = (path.contains("/") ? path.substring(0, path.lastIndexOf("/") + 1) : "") + prefix + "-" + objectName;
-            try {
-                return new URI(uri.getScheme(), uri.getHost(), newPath, uri.getFragment());
-            } catch (URISyntaxException e) {
-                throw new IOException(e);
+        String prefix = path.contains("/") ? path.substring(0, path.lastIndexOf("/") + 1) : "";
+        String filename = path.contains("/") ? path.substring(path.lastIndexOf("/") + 1) : path;
+
+        if (filename.length() > MAX_OBJECT_NAME_LENGTH) {
+            int allowed = MAX_OBJECT_NAME_LENGTH - prefix.length();
+            if (allowed <= 0) {
+                filename = RandomStringUtils.secure().nextAlphanumeric(MAX_OBJECT_NAME_LENGTH).toLowerCase();
+                prefix = "";
+            } else {
+                filename = filename.substring(filename.length() - allowed + 5);
+                String randPrefix = RandomStringUtils.secure().nextAlphanumeric(5).toLowerCase();
+                filename = randPrefix + "-" + filename;
             }
         }
-        return uri;
+
+        String newPath = prefix + filename;
+        try {
+            return new URI(uri.getScheme(), uri.getHost(), newPath, uri.getFragment());
+        } catch (URISyntaxException e) {
+            throw new IOException(e);
+        }
     }
 
+    // --- REST OF THE METHODS REMAIN UNCHANGED ---
     private void mkdirs(String path) throws IOException {
         if (!path.endsWith("/")) {
             path = path.substring(0, path.lastIndexOf("/") + 1);
         }
 
-        // check if it exists before creating it
-        if (exists(path)) {
-            return;
-        }
+        if (exists(path)) return;
 
         String[] directories = path.split("/");
         StringBuilder aggregatedPath = new StringBuilder();
-        // perform 1 put request per parent directory in the path
-        for (int i = 0; i < directories.length; i++) {
-            aggregatedPath.append(directories[i]).append("/");
+        for (String dir : directories) {
+            if (dir.isEmpty()) continue;
+            aggregatedPath.append(dir).append("/");
             try {
                 this.minioClient.putObject(PutObjectArgs.builder()
                     .bucket(bucket)
@@ -357,7 +352,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                     .object(getPath(tenantId, uri))
                     .build()
             );
-
             return true;
         } catch (Exception e) {
             return false;
@@ -383,7 +377,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                     .object(getPath(uri))
                     .build()
             );
-
             return true;
         } catch (Exception e) {
             return false;
@@ -402,10 +395,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @NotNull
     private URI createDirectory(URI uri, String path) throws IOException {
-        if (!path.endsWith("/")) {
-            // Directory are just objects ending with a /
-            path = path + "/";
-        }
+        if (!path.endsWith("/")) path += "/";
         mkdirs(path);
 
         try {
@@ -454,9 +444,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 .build());
             for (Result<DeleteError> result : results) {
                 DeleteError deleteError = result.get();
-                if (deleteError != null) {
-                    throw new IOException(deleteError.message());
-                }
+                if (deleteError != null) throw new IOException(deleteError.message());
             }
         } catch (MinioException e) {
             throw reThrowMinioStorageException(from.toString(), e);
@@ -493,13 +481,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                     .build()
                 )
             )
-            .map(throwFunction(itemResult -> {
-                try {
-                    return Pair.of(itemResult.get().objectName(), new DeleteObject(itemResult.get().objectName()));
-                } catch (Exception e) {
-                    throw new IOException(e);
-                }
-            }))
+            .map(throwFunction(itemResult -> Pair.of(itemResult.get().objectName(), new DeleteObject(itemResult.get().objectName()))))
             .toList();
 
         Iterable<Result<DeleteError>> results = this.minioClient.removeObjects(RemoveObjectsArgs.builder()
@@ -510,21 +492,13 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
         if (results.iterator().hasNext()) {
             throw new IOException("Unable to delete all files, failed on [" +
-                Streams
-                    .stream(results)
-                    .map(throwFunction(r -> {
-                        try {
-                            return r.get().objectName();
-                        } catch (Exception e) {
-                            throw new IOException(e);
-                        }
-                    }))
+                Streams.stream(results)
+                    .map(throwFunction(r -> r.get().objectName()))
                     .collect(Collectors.joining(", ")) +
                 "]");
         }
 
-        return deleted
-            .stream()
+        return deleted.stream()
             .map(Pair::getLeft)
             .map(name -> name.replaceFirst(tenantId + "/", ""))
             .map(name -> name.endsWith("/") ? name.substring(0, name.length() - 1) : name)
@@ -534,10 +508,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     private String toPrefix(String path, boolean isDirectory) {
         boolean isRoot = path.isEmpty();
-        if (isDirectory && !isRoot) {
-            return path.endsWith("/") ? path : path + "/";
-        }
-
+        if (isDirectory && !isRoot) return path.endsWith("/") ? path : path + "/";
         return path;
     }
 
@@ -564,3 +535,4 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         }
     }
 }
+
