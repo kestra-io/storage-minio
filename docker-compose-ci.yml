@@ -4,20 +4,22 @@ volumes:
 
 services:
   minio:
-    image: minio/minio
+    build:
+      context: .
+      dockerfile: Dockerfile.minio
     volumes:
       - minio-data:/data
-    command: server /data
+    command: server /data --console-address ":9001"
     environment:
       MINIO_DOMAIN: localhost
       MINIO_ACCESS_KEY: AKIAIOSFODNN7EXAMPLE
       MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     ports:
-      - 9000:9000
+      - 43819:9000
+      - 9001:9001
 
   mitmproxy:
     image: mitmproxy/mitmproxy
     ports:
       - "8888:8080"  # MITM proxy listens on 8080 inside container by default
     command: mitmdump --mode regular --listen-port 8080
-
