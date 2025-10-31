@@ -1,6 +1,8 @@
 volumes:
   minio-data:
     driver: local
+  minio-data-tls:
+    driver: local
 
 services:
   minio:
@@ -14,6 +16,18 @@ services:
       MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     ports:
       - 9000:9000
+
+  minio-tls:
+    image: minio/minio
+    volumes:
+      - minio-data-tls:/data
+      - ./src/test/resources/mtls:/root/.minio/certs:ro
+    command: server /data
+    environment:
+      MINIO_ACCESS_KEY: accessKey
+      MINIO_SECRET_KEY: secretKey
+    ports:
+      - 9443:9000
 
   mitmproxy:
     image: mitmproxy/mitmproxy
