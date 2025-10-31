@@ -92,7 +92,7 @@ public class MinioClientFactory {
     private static OkHttpClient buildHttpClientWithTls(MinioConfig config) throws Exception {
         OkHttpClient.Builder builder = createHttpClient(config).newBuilder();
 
-        if (config.getSslOptions().getInsecureTrustAllCertificates() != null && config.getSslOptions().getInsecureTrustAllCertificates().equals(Boolean.TRUE)) {
+        if (config.getSslOptions() != null && config.getSslOptions().getInsecureTrustAllCertificates().equals(Boolean.TRUE)) {
             SSLContext sslContext = SSLContexts.custom()
                 .loadTrustMaterial(null, (chain, authType) -> true)
                 .build();
