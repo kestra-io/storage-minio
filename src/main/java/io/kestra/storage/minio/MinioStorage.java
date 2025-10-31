@@ -7,6 +7,7 @@ import io.kestra.core.storages.FileAttributes;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.storages.StorageObject;
 import io.kestra.storage.minio.domains.ProxyConfiguration;
+import io.kestra.storage.minio.domains.SslOptions;
 import io.kestra.storage.minio.internal.BytesSize;
 import io.minio.*;
 import io.minio.errors.*;
@@ -65,6 +66,12 @@ public class MinioStorage implements StorageInterface, MinioConfig {
 
     @Getter(AccessLevel.PRIVATE)
     private MinioClient minioClient;
+
+    private String caPem;
+
+    private String clientPem;
+
+    private SslOptions sslOptions;
 
     /**
      * {@inheritDoc}
