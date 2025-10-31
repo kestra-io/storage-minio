@@ -9,10 +9,19 @@ import io.minio.credentials.IamAwsProvider;
 import io.minio.credentials.MinioEnvironmentProvider;
 import io.minio.credentials.Provider;
 import io.minio.credentials.StaticProvider;
+
+import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.nio.charset.StandardCharsets;
+import java.security.cert.X509Certificate;
+
 import okhttp3.OkHttpClient;
+import org.apache.hc.core5.ssl.SSLContexts;
 import org.jetbrains.annotations.NotNull;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.X509TrustManager;
 
 public class MinioClientFactory {
 
@@ -28,7 +37,7 @@ public class MinioClientFactory {
 
             bdr.credentialsProvider(getCredentialProvider(config));
 
-            bdr.httpClient(createHttpClient(config));
+            bdr.httpClient(buildHttpClientWithTls(config));
 
             MinioClient build = bdr.build();
 
@@ -78,5 +87,47 @@ public class MinioClientFactory {
             );
         }
         return provider;
+    }
+
+    private static OkHttpClient buildHttpClientWithTls(MinioConfig config) throws Exception {
+        OkHttpClient.Builder builder = createHttpClient(config).newBuilder();
+
+        if (config.getSslOptions().getInsecureTrustAllCertificates() != null && config.getSslOptions().getInsecureTrustAllCertificates().equals(Boolean.TRUE)) {
+            SSLContext sslContext = SSLContexts.custom()
+                .loadTrustMaterial(null, (chain, authType) -> true)
+                .build();
+
+            builder.sslSocketFactory(sslContext.getSocketFactory(), CustomTrustManager.INSTANCE);
+            builder.hostnameVerifier((h, s) -> true);
+
+        } else if (config.getClientPem() != null || config.getCaPem() != null) {
+            OkHttpClient tlsClient = MinioHttpClientUtils.withPemCertificate(
+                config.getClientPem() != null
+                    ? new ByteArrayInputStream(config.getClientPem().getBytes(StandardCharsets.UTF_8))
+                    : null,
+                config.getCaPem() != null
+                    ? new ByteArrayInputStream(config.getCaPem().getBytes(StandardCharsets.UTF_8))
+                    : null
+            );
+
+            builder.sslSocketFactory(tlsClient.sslSocketFactory(), CustomTrustManager.INSTANCE);
+        }
+
+        return builder.build();
+    }
+
+    private static class CustomTrustManager implements X509TrustManager {
+        static final CustomTrustManager INSTANCE = new CustomTrustManager();
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType) { }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType) { }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return new X509Certificate[0];
+        }
     }
 }
