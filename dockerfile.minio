@@ -1,0 +1,27 @@
+
+FROM alpine:3.20 AS builder
+
+RUN apk add --no-cache wget
+
+RUN wget https://dl.min.io/server/minio/release/linux-amd64/minio -O /minio && \
+    chmod +x /minio
+
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates && \
+    adduser -D -g '' minio && \
+    mkdir /data && chown minio:minio /data
+
+COPY --from=builder /minio /usr/local/bin/minio
+
+USER minio
+
+EXPOSE 9000
+
+VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD curl -f http://localhost:9000/minio/health/live || exit 1
+
+ENTRYPOINT ["minio"]
+
+CMD ["server", "/data"]

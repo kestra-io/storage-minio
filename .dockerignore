@@ -1,0 +1,47 @@
+# Version control
+.git
+.gitignore
+
+# Build artifacts and dependencies
+build/
+*.class
+*.jar
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
+# IDE specific files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Test files
+src/test/
+**/test/
+**/*Test.java
+**/*Tests.java
+
+# Documentation
+README.md
+LICENSE
+*.md
+
+# Logs and databases
+*.log
+*.sqlite
+
+# Configuration files that shouldn't be in the image
+application-test.yml
+logback.xml
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
