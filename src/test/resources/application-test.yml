@@ -2,7 +2,7 @@ kestra:
   storage:
     type: minio
     minio:
-      endpoint: minio
+      endpoint: versity
       port: 9000
       accessKey: AKIAIOSFODNN7EXAMPLE
       secretKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -11,4 +11,3 @@ kestra:
         type: HTTP
         address: localhost
         port: 8888
-

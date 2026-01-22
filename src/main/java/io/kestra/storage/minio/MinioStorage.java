@@ -449,8 +449,14 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                     .build());
                 for (Result<Item> result : results) {
                     Item item = result.get();
-                    String newKey = dest + "/" + item.objectName().substring(sourcePrefix.length());
-                    move(item.objectName(), newKey, toDelete);
+                    String objectName = item.objectName();
+                    String newKey = dest + "/" + objectName.substring(sourcePrefix.length());
+                    if (objectName.endsWith("/")) {
+                        mkdirs(newKey);
+                        toDelete.add(new DeleteObject(objectName));
+                        continue;
+                    }
+                    move(objectName, newKey, toDelete);
                 }
             } else {
                 move(source, dest, toDelete);
@@ -549,8 +555,15 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     }
 
     private IOException reThrowMinioStorageException(String uri, MinioException e) {
-        if (e instanceof ErrorResponseException && ((ErrorResponseException) e).errorResponse().code().equals("NoSuchKey")) {
-            return new FileNotFoundException(uri + " (File not found)");
+        if (e instanceof ErrorResponseException errorResponseException) {
+            if ("NoSuchKey".equals(errorResponseException.errorResponse().code())) {
+                return new FileNotFoundException(uri + " (File not found)");
+            }
+        } else if (e instanceof InvalidResponseException) {
+            String message = e.getMessage();
+            if (message != null && message.contains("<Code>NoSuchKey</Code>")) {
+                return new FileNotFoundException(uri + " (File not found)");
+            }
         }
         return new IOException(e);
     }

@@ -39,7 +39,7 @@ class MinioStorageVhostTest {
         MinioClient minioClient = ((MinioStorage) storage).minioClient();
         minioClient.traceOn(traceStream);
         try {
-            storage.list(MAIN_TENANT, null, URI.create("/"));
+            minioClient.bucketExists(BucketExistsArgs.builder().bucket(((MinioStorage) storage).getBucket()).build());
             assertThat(traceStream.toString(), containsString("Host: " + ((MinioStorage) storage).getBucket() + "." + ((MinioStorage) storage).getEndpoint()));
         } finally {
             minioClient.traceOff();
