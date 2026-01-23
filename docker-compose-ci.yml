@@ -1,37 +1,47 @@
 volumes:
-  minio-data:
+  versity-data:
     driver: local
-  minio-data-tls:
+  versity-data-tls:
     driver: local
 
 services:
-  minio:
-    image: minio/minio
+  versity:
+    image: versity/versitygw:latest
     volumes:
-      - minio-data:/data
-    command: server /data
+      - versity-data:/data
     environment:
-      MINIO_DOMAIN: localhost
-      MINIO_ACCESS_KEY: AKIAIOSFODNN7EXAMPLE
-      MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-    ports:
-      - 9000:9000
+      ROOT_ACCESS_KEY: AKIAIOSFODNN7EXAMPLE
+      ROOT_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 
-  minio-tls:
-    image: minio/minio
-    volumes:
-      - minio-data-tls:/data
-      - ./src/test/resources/mtls:/root/.minio/certs:ro
-    command: server /data
-    environment:
-      MINIO_ACCESS_KEY: accessKey
-      MINIO_SECRET_KEY: secretKey
+      # Force listen port inside container to match your logs (9000)
+      VGW_PORT: ":9000"
+    entrypoint:
+      - "sh"
+      - "-c"
+      - "mkdir -p /data/unittest && exec /usr/local/bin/docker-entrypoint.sh posix /data"
+    command: []
     ports:
-      - 9443:9000
+      - "9000:9000"
+
+  versity-tls:
+    image: versity/versitygw:latest
+    volumes:
+      - versity-data-tls:/data
+      - ./src/test/resources/mtls:/certs:ro
+    environment:
+      ROOT_ACCESS_KEY: accessKey
+      ROOT_SECRET_KEY: secretKey
+      VGW_PORT: ":9000"
+    entrypoint:
+      - "sh"
+      - "-c"
+      - "mkdir -p /data/tls-bucket && exec /usr/local/bin/docker-entrypoint.sh --port :9000 --cert /certs/public.crt --key /certs/private.key posix /data"
+    command: []
+    ports:
+      - "9443:9000"
 
   mitmproxy:
     image: mitmproxy/mitmproxy
     ports:
-      - "8888:8080"  # MITM proxy listens on 8080 inside container by default
+      - "8888:8080"
     command: mitmdump --mode regular --listen-port 8080
-
