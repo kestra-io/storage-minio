@@ -1,0 +1,13 @@
+server:
+  listen: ":9000"
+
+auth:
+  type: static
+  static:
+    access_key: AKIAIOSFODNN7EXAMPLE
+    secret_key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+backend:
+  type: filesystem
+  filesystem:
+    root: /data
