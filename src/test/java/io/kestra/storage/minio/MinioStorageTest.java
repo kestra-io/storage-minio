@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 
 import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -59,5 +60,26 @@ class MinioStorageTest extends StorageTestSuite {
         assertThat(put.getPath(), not(longObjectName));
         String suffix = put.getPath().substring(7); // we remove the random 5 char + '-'
         assertTrue(longObjectName.endsWith(suffix));
+    }
+
+    @Test
+    void allByPrefixShouldIgnoreObjectsOutsidePrefix() throws Exception {
+        storage.put(MAIN_TENANT, "some_namespace", URI.create("/some_namespace/file.txt"), new ByteArrayInputStream(new byte[0]));
+        storage.put("tenant", "some_namespace", URI.create("/some_namespace/tenant_file.txt"), new ByteArrayInputStream(new byte[0]));
+        storage.createDirectory(MAIN_TENANT, "some_namespace", URI.create("/some_namespace/folder/sub"));
+
+        var result = storage.allByPrefix(MAIN_TENANT, "some_namespace", URI.create("kestra:///some_namespace/"), true);
+
+        assertThat(result, containsInAnyOrder(
+            URI.create("kestra:///some_namespace/file.txt"),
+            URI.create("kestra:///some_namespace/folder/"),
+            URI.create("kestra:///some_namespace/folder/sub/")
+        ));
+
+        result = storage.allByPrefix("tenant", "some_namespace", URI.create("/some_namespace"), true);
+        assertThat(result, containsInAnyOrder(URI.create("kestra:///some_namespace/tenant_file.txt")));
+
+        result = storage.allByPrefix(MAIN_TENANT, "some_namespace", URI.create("/some_namespace/folder"), true);
+        assertThat(result, containsInAnyOrder(URI.create("kestra:///some_namespace/folder/sub/")));
     }
 }
