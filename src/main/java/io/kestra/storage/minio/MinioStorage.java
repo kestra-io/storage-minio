@@ -182,6 +182,9 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             return StreamSupport.stream(results.spliterator(), false)
                 .map(throwFunction(o -> o.get().objectName()))
                 .filter(name -> {
+                    if (!name.startsWith(prefix)) {
+                        return false;
+                    }
                     name = name.substring(prefix.length());
                     // Remove recursive result and requested dir
                     return !name.isEmpty()
