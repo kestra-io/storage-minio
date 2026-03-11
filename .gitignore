@@ -13,4 +13,5 @@ out/
 .settings
 .classpath
 .attach*
-src/test/resources/mtls
+src/test/resources/mtls.factorypath
+bin/
