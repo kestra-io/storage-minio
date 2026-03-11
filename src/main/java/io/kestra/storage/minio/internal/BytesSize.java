@@ -1,9 +1,9 @@
 package io.kestra.storage.minio.internal;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-
 import java.util.Locale;
 import java.util.OptionalLong;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 
 /**
  * Wrapper for long representation of a byte size.
@@ -18,7 +18,8 @@ public record BytesSize(long value) {
     private static final int KB_UNIT = 1024;
 
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public BytesSize {}
+    public BytesSize {
+    }
 
     /**
      * Constructor for a new {@link BytesSize} object from a given string.
@@ -27,8 +28,11 @@ public record BytesSize(long value) {
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public BytesSize(final String value) {
-        this(convert(value).orElseThrow(
-            () -> new IllegalArgumentException(String.format("Cannot convert '%s' to long bytes size.", value))));
+        this(
+            convert(value).orElseThrow(
+                () -> new IllegalArgumentException(String.format("Cannot convert '%s' to long bytes size.", value))
+            )
+        );
     }
 
     private static OptionalLong convert(final String object) {

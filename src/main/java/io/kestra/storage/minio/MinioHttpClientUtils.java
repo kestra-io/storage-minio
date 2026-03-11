@@ -1,16 +1,5 @@
 package io.kestra.storage.minio;
 
-import okhttp3.OkHttpClient;
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -19,9 +8,22 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
+
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+
+import okhttp3.OkHttpClient;
 
 public class MinioHttpClientUtils {
-    public static OkHttpClient withPemCertificate(InputStream clientPemIs, InputStream caPem) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, KeyManagementException, UnrecoverableKeyException {
+    public static OkHttpClient withPemCertificate(InputStream clientPemIs, InputStream caPem)
+        throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, KeyManagementException, UnrecoverableKeyException {
         PrivateKey privateKey = null;
         Certificate clientCertificate = null;
 
@@ -41,7 +43,7 @@ public class MinioHttpClientUtils {
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
         keyStore.load(null, null);
 
-        Certificate[] privateKeyChain = new Certificate[]{clientCertificate};
+        Certificate[] privateKeyChain = new Certificate[] { clientCertificate };
 
         if (caPem != null) {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");

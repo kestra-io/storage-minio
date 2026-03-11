@@ -1,6 +1,5 @@
 package io.kestra.storage.minio;
 
-
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.storage.minio.domains.ProxyConfiguration;
 import io.kestra.storage.minio.domains.SslOptions;

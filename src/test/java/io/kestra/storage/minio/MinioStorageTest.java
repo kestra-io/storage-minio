@@ -1,18 +1,20 @@
 package io.kestra.storage.minio;
 
-import io.kestra.core.storage.StorageTestSuite;
-import io.kestra.core.storages.StorageInterface;
-import io.kestra.core.utils.IdUtils;
-import io.minio.BucketExistsArgs;
-import io.minio.MakeBucketArgs;
-import jakarta.inject.Inject;
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
+import io.kestra.core.storage.StorageTestSuite;
+import io.kestra.core.storages.StorageInterface;
+import io.kestra.core.utils.IdUtils;
+
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
+import jakarta.inject.Inject;
 
 import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -70,11 +72,13 @@ class MinioStorageTest extends StorageTestSuite {
 
         var result = storage.allByPrefix(MAIN_TENANT, "some_namespace", URI.create("kestra:///some_namespace/"), true);
 
-        assertThat(result, containsInAnyOrder(
-            URI.create("kestra:///some_namespace/file.txt"),
-            URI.create("kestra:///some_namespace/folder/"),
-            URI.create("kestra:///some_namespace/folder/sub/")
-        ));
+        assertThat(
+            result, containsInAnyOrder(
+                URI.create("kestra:///some_namespace/file.txt"),
+                URI.create("kestra:///some_namespace/folder/"),
+                URI.create("kestra:///some_namespace/folder/sub/")
+            )
+        );
 
         result = storage.allByPrefix("tenant", "some_namespace", URI.create("/some_namespace"), true);
         assertThat(result, containsInAnyOrder(URI.create("kestra:///some_namespace/tenant_file.txt")));

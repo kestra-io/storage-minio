@@ -1,20 +1,21 @@
 package io.kestra.storage.minio;
 
-import io.kestra.core.serializers.JacksonMapper;
-import io.kestra.storage.minio.internal.BytesSize;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.storage.minio.internal.BytesSize;
 
 class MinioConfigTest {
 
     private static final Map<String, Object> DEFAULT_CONFIG = Map.of(
         "accessKey", "test-access-key",
         "secretKey", "test-secret-key",
-        "endpoint","localhost",
-        "bucket","unittest",
+        "endpoint", "localhost",
+        "bucket", "unittest",
         "port", 9000
     );
 

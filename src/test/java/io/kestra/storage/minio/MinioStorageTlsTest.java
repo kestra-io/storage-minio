@@ -1,17 +1,19 @@
 package io.kestra.storage.minio;
 
-import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.utils.IdUtils;
-import io.kestra.storage.minio.domains.SslOptions;
-import io.minio.BucketExistsArgs;
-import io.minio.MakeBucketArgs;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.utils.IdUtils;
+import io.kestra.storage.minio.domains.SslOptions;
+
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
 
 import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;

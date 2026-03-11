@@ -1,11 +1,12 @@
 package io.kestra.storage.minio;
 
+import java.util.Map;
+
 import io.kestra.core.storages.FileAttributes;
+
 import io.minio.StatObjectResponse;
 import lombok.Builder;
 import lombok.Value;
-
-import java.util.Map;
 
 @Value
 public class MinioFileAttributes implements FileAttributes {

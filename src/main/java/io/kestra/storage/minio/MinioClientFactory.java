@@ -1,6 +1,19 @@
 package io.kestra.storage.minio;
 
+import java.io.ByteArrayInputStream;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.nio.charset.StandardCharsets;
+import java.security.cert.X509Certificate;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.X509TrustManager;
+
+import org.apache.hc.core5.ssl.SSLContexts;
+import org.jetbrains.annotations.NotNull;
+
 import io.kestra.storage.minio.domains.ProxyConfiguration;
+
 import io.minio.MinioClient;
 import io.minio.credentials.AwsConfigProvider;
 import io.minio.credentials.AwsEnvironmentProvider;
@@ -9,19 +22,7 @@ import io.minio.credentials.IamAwsProvider;
 import io.minio.credentials.MinioEnvironmentProvider;
 import io.minio.credentials.Provider;
 import io.minio.credentials.StaticProvider;
-
-import java.io.ByteArrayInputStream;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.nio.charset.StandardCharsets;
-import java.security.cert.X509Certificate;
-
 import okhttp3.OkHttpClient;
-import org.apache.hc.core5.ssl.SSLContexts;
-import org.jetbrains.annotations.NotNull;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.X509TrustManager;
 
 public class MinioClientFactory {
 
@@ -55,12 +56,15 @@ public class MinioClientFactory {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         ProxyConfiguration proxyConf = config.getProxyConfiguration();
         if (proxyConf != null && proxyConf.getType() != Proxy.Type.DIRECT) {
-            Proxy proxy = new Proxy(proxyConf.getType(),
-                new InetSocketAddress(proxyConf.getAddress(), proxyConf.getPort()));
+            Proxy proxy = new Proxy(
+                proxyConf.getType(),
+                new InetSocketAddress(proxyConf.getAddress(), proxyConf.getPort())
+            );
             builder.proxy(proxy);
 
             if (proxyConf.getUsername() != null && proxyConf.getPassword() != null) {
-                builder.proxyAuthenticator((route, response) -> {
+                builder.proxyAuthenticator((route, response) ->
+                {
                     String credential = okhttp3.Credentials.basic(proxyConf.getUsername(), proxyConf.getPassword());
                     return response.request().newBuilder()
                         .header("Proxy-Authorization", credential)
@@ -120,10 +124,12 @@ public class MinioClientFactory {
         static final CustomTrustManager INSTANCE = new CustomTrustManager();
 
         @Override
-        public void checkClientTrusted(X509Certificate[] chain, String authType) { }
+        public void checkClientTrusted(X509Certificate[] chain, String authType) {
+        }
 
         @Override
-        public void checkServerTrusted(X509Certificate[] chain, String authType) { }
+        public void checkServerTrusted(X509Certificate[] chain, String authType) {
+        }
 
         @Override
         public X509Certificate[] getAcceptedIssuers() {

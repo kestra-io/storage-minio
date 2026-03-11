@@ -1,19 +1,19 @@
 package io.kestra.storage.minio;
 
-import io.kestra.core.storages.StorageInterface;
-import io.micronaut.context.annotation.Property;
+import java.io.ByteArrayOutputStream;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.storages.StorageInterface;
+
+import io.micronaut.context.annotation.Property;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.net.URI;
-
-import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 
@@ -25,6 +25,7 @@ class MinioStorageVhostTest {
 
     @Inject
     StorageInterface storage;
+
     @BeforeEach
     void init() throws Exception {
         MinioClient minioClient = ((MinioStorage) storage).minioClient();

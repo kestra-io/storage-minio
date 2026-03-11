@@ -22,10 +22,12 @@ public class MetadataUtils {
             return null;
         }
         return metadata.entrySet().stream()
-            .map(entry -> Map.entry(
-                METADATA_KEY_WORD_SEPARATOR.matcher(entry.getKey())
-                    .replaceAll(matchResult -> matchResult.group(1).toUpperCase()),
-                entry.getValue()
-            )).collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
+            .map(
+                entry -> Map.entry(
+                    METADATA_KEY_WORD_SEPARATOR.matcher(entry.getKey())
+                        .replaceAll(matchResult -> matchResult.group(1).toUpperCase()),
+                    entry.getValue()
+                )
+            ).collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
     }
 }
