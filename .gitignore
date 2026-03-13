@@ -13,6 +13,6 @@ out/
 .settings
 .classpath
 .attach*
-src/test/resources/mtls.factorypath
+src/test/resources/mtls
 bin/
 .factorypath
