@@ -7,42 +7,42 @@ import io.kestra.storage.minio.internal.BytesSize;
 
 public interface MinioConfig {
 
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getEndpoint();
 
-    @PluginProperty
+    @PluginProperty(group = "connection")
     int getPort();
 
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getAccessKey();
 
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getSecretKey();
 
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getRegion();
 
     @PluginProperty
     boolean isSecure();
 
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getBucket();
 
     @PluginProperty
     boolean isVhost();
 
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     BytesSize getPartSize();
 
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     ProxyConfiguration getProxyConfiguration();
 
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     String getCaPem();
 
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     String getClientPem();
 
-    @PluginProperty
+    @PluginProperty(group = "connection")
     SslOptions getSslOptions();
 }
