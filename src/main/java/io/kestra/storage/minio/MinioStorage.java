@@ -4,8 +4,6 @@ import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -31,8 +29,8 @@ import io.kestra.storage.minio.internal.BytesSize;
 
 import io.minio.*;
 import io.minio.errors.*;
-import io.minio.messages.DeleteError;
-import io.minio.messages.DeleteObject;
+import io.minio.messages.DeleteRequest;
+import io.minio.messages.DeleteResult;
 import io.minio.messages.Item;
 import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
@@ -105,8 +103,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             );
         } catch (MinioException e) {
             throw reThrowMinioStorageException(uri.toString(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IOException(e);
         }
     }
 
@@ -126,8 +122,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             return new StorageObject(metadata, this.get(tenantId, namespace, uri));
         } catch (MinioException e) {
             throw reThrowMinioStorageException(uri.toString(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IOException(e);
         }
     }
 
@@ -205,7 +199,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 });
         } catch (MinioException e) {
             throw reThrowMinioStorageException(prefix, e);
-        } catch (FileNotFoundException | IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
             throw new IOException(e);
@@ -273,8 +267,6 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 .build();
         } catch (MinioException e) {
             throw reThrowMinioStorageException(path, e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IOException(e);
         }
     }
 
@@ -298,13 +290,11 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                     .bucket(bucket)
                     .object(path)
                     .userMetadata(MetadataUtils.toStoredMetadata(storageObject.metadata()))
-                    .stream(data, -1, partSize.value())
+                    .stream(data, -1L, partSize.value())
                     .build()
             );
         } catch (MinioException e) {
             throw reThrowMinioStorageException(uri.toString(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IOException(e);
         }
 
         return URI.create("kestra://" + uri.getPath());
@@ -351,7 +341,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                     PutObjectArgs.builder()
                         .bucket(bucket)
                         .object(aggregatedPath.toString())
-                        .stream(new ByteArrayInputStream(new byte[0]), 0, 0)
+                        .data(new byte[0], 0)
                         .contentType("application/x-directory")
                         .build()
                 );
@@ -436,13 +426,11 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                 PutObjectArgs.builder()
                     .bucket(bucket)
                     .object(path)
-                    .stream(new ByteArrayInputStream(new byte[] {}), 0, -1)
+                    .data(new byte[0], 0)
                     .build()
             );
         } catch (MinioException e) {
             throw reThrowMinioStorageException(uri.toString(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IOException(e);
         }
 
         return URI.create(getPath("kestra://", uri));
@@ -452,7 +440,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     public URI move(String tenantId, @Nullable String namespace, URI from, URI to) throws IOException {
         String source = getPath(tenantId, from);
         String dest = getPath(tenantId, to);
-        List<DeleteObject> toDelete = new ArrayList<>();
+        List<DeleteRequest.Object> toDelete = new ArrayList<>();
 
         try {
             FileAttributes attributes = getAttributes(tenantId, namespace, from);
@@ -472,7 +460,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
                     String newKey = dest + "/" + objectName.substring(sourcePrefix.length());
                     if (objectName.endsWith("/")) {
                         mkdirs(newKey);
-                        toDelete.add(new DeleteObject(objectName));
+                        toDelete.add(new DeleteRequest.Object(objectName));
                         continue;
                     }
                     move(objectName, newKey, toDelete);
@@ -480,14 +468,14 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             } else {
                 move(source, dest, toDelete);
             }
-            Iterable<Result<DeleteError>> results = this.minioClient.removeObjects(
+            Iterable<Result<DeleteResult.Error>> results = this.minioClient.removeObjects(
                 RemoveObjectsArgs.builder()
                     .bucket(bucket)
                     .objects(toDelete)
                     .build()
             );
-            for (Result<DeleteError> result : results) {
-                DeleteError deleteError = result.get();
+            for (Result<DeleteResult.Error> result : results) {
+                DeleteResult.Error deleteError = result.get();
                 if (deleteError != null) {
                     throw new IOException(deleteError.message());
                 }
@@ -502,27 +490,27 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         return URI.create(getPath("kestra://", to));
     }
 
-    private void move(String source, String dest, List<DeleteObject> toDelete) throws Exception {
+    private void move(String source, String dest, List<DeleteRequest.Object> toDelete) throws Exception {
         mkdirs(dest);
         this.minioClient.copyObject(
             CopyObjectArgs.builder()
                 .bucket(bucket)
                 .object(dest)
                 .source(
-                    CopySource.builder()
+                    SourceObject.builder()
                         .bucket(bucket)
                         .object(source)
                         .build()
                 )
                 .build()
         );
-        toDelete.add(new DeleteObject(source));
+        toDelete.add(new DeleteRequest.Object(source));
     }
 
     @Override
     public List<URI> deleteByPrefix(String tenantId, @Nullable String namespace, URI storagePrefix) throws IOException {
         String path = tenantId == null ? getPath(storagePrefix) : getPath(tenantId, storagePrefix);
-        List<Pair<String, DeleteObject>> deleted = Streams
+        List<Pair<String, DeleteRequest.Object>> deleted = Streams
             .stream(
                 this.minioClient
                     .listObjects(
@@ -536,14 +524,14 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             .map(throwFunction(itemResult ->
             {
                 try {
-                    return Pair.of(itemResult.get().objectName(), new DeleteObject(itemResult.get().objectName()));
+                    return Pair.of(itemResult.get().objectName(), new DeleteRequest.Object(itemResult.get().objectName()));
                 } catch (Exception e) {
                     throw new IOException(e);
                 }
             }))
             .toList();
 
-        Iterable<Result<DeleteError>> results = this.minioClient.removeObjects(
+        Iterable<Result<DeleteResult.Error>> results = this.minioClient.removeObjects(
             RemoveObjectsArgs.builder()
                 .bucket(bucket)
                 .objects(deleted.stream().map(Pair::getRight).toList())

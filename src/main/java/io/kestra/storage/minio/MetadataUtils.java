@@ -1,8 +1,11 @@
 package io.kestra.storage.minio;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
+
+import io.minio.Http;
 
 public class MetadataUtils {
     private static final Pattern METADATA_KEY_WORD_SEPARATOR = Pattern.compile("_([a-z])");
@@ -22,12 +25,21 @@ public class MetadataUtils {
             return null;
         }
         return metadata.entrySet().stream()
-            .map(
-                entry -> Map.entry(
-                    METADATA_KEY_WORD_SEPARATOR.matcher(entry.getKey())
-                        .replaceAll(matchResult -> matchResult.group(1).toUpperCase()),
-                    entry.getValue()
-                )
-            ).collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
+            .map(entry -> Map.entry(toRetrievedKey(entry.getKey()), entry.getValue()))
+            .collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
+    }
+
+    public static Map<String, String> toRetrievedMetadata(Http.Headers metadata) {
+        if (metadata == null) {
+            return null;
+        }
+        return metadata.entrySet().stream()
+            .map(entry -> Map.entry(toRetrievedKey(entry.getKey()), entry.getValue()))
+            .collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
+    }
+
+    private static String toRetrievedKey(String key) {
+        return METADATA_KEY_WORD_SEPARATOR.matcher(key.toLowerCase(Locale.US))
+            .replaceAll(matchResult -> matchResult.group(1).toUpperCase());
     }
 }
