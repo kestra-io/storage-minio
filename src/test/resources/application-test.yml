@@ -1,4 +1,8 @@
 kestra:
+  queue:
+    type: memory
+  repository:
+    type: memory
   storage:
     type: minio
     minio:
