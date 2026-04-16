@@ -15,3 +15,7 @@ kestra:
         type: HTTP
         address: localhost
         port: 8888
+
+grpc:
+  server:
+    enabled: false
