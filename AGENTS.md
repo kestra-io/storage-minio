@@ -2,11 +2,13 @@
 
 ## What
 
-Minio / S3 compatible storage plugin for Kestra
+- Implements the storage backend under `io.kestra.storage.minio`.
+- Includes classes such as `MinioFileAttributes`, `MinioConfig`, `MetadataUtils`, `MinioClientFactory`.
 
 ## Why
 
-Enables Kestra to use Minio as its internal storage backend for persisting flow execution data, logs, and artifacts.
+- This repository implements a Kestra storage backend for storage plugin for S3 and S3-compatible services such as Minio.
+- It stores namespace files and internal execution artifacts outside local disk.
 
 ## How
 
@@ -32,24 +34,11 @@ storage-minio/
 └── README.md
 ```
 
-### Important Commands
+## Local rules
 
-```bash
-# Build the plugin
-./gradlew shadowJar
+- Keep the scope on Kestra internal storage behavior, not workflow task semantics.
 
-# Run tests
-./gradlew test
+## References
 
-# Build without tests
-./gradlew shadowJar -x test
-```
-
-### Configuration
-
-All tasks and triggers accept standard Kestra plugin properties. Credentials should use
-`{{ secret('SECRET_NAME') }}` — never hardcode real values.
-
-## Agents
-
-**IMPORTANT:** This is a Kestra plugin repository (prefixed by `plugin-`, `storage-`, or `secret-`). You **MUST** delegate all coding tasks to the `kestra-plugin-developer` agent. Do NOT implement code changes directly — always use this agent.
+- https://kestra.io/docs/plugin-developer-guide
+- https://kestra.io/docs/plugin-developer-guide/contribution-guidelines
