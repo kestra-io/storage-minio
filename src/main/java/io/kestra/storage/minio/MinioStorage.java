@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -74,6 +75,15 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     private String clientPem;
 
     private SslOptions sslOptions;
+
+    @jakarta.annotation.Nullable
+    private Duration httpConnectTimeout;
+
+    @jakarta.annotation.Nullable
+    private Duration httpReadTimeout;
+
+    @jakarta.annotation.Nullable
+    private Duration httpWriteTimeout;
 
     /**
      * {@inheritDoc}
