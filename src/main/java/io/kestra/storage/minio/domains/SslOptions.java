@@ -1,9 +1,10 @@
 package io.kestra.storage.minio.domains;
 
+import io.kestra.core.models.annotations.PluginProperty;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @Builder
