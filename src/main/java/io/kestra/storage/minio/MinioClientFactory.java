@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509TrustManager;
@@ -71,6 +72,16 @@ public class MinioClientFactory {
                         .build();
                 });
             }
+        }
+
+        if (config.getHttpConnectTimeout() != null) {
+            builder.connectTimeout(config.getHttpConnectTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
+        if (config.getHttpReadTimeout() != null) {
+            builder.readTimeout(config.getHttpReadTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
+        if (config.getHttpWriteTimeout() != null) {
+            builder.writeTimeout(config.getHttpWriteTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
 
         return builder.build();
