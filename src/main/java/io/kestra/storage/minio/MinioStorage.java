@@ -85,6 +85,9 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     @jakarta.annotation.Nullable
     private Duration httpWriteTimeout;
 
+    @jakarta.annotation.Nullable
+    private Duration httpConnectionKeepAlive;
+
     /**
      * {@inheritDoc}
      **/
