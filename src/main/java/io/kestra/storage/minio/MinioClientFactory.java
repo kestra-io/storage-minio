@@ -23,6 +23,7 @@ import io.minio.credentials.IamAwsProvider;
 import io.minio.credentials.MinioEnvironmentProvider;
 import io.minio.credentials.Provider;
 import io.minio.credentials.StaticProvider;
+import okhttp3.ConnectionPool;
 import okhttp3.OkHttpClient;
 
 public class MinioClientFactory {
@@ -83,6 +84,12 @@ public class MinioClientFactory {
         if (config.getHttpWriteTimeout() != null) {
             builder.writeTimeout(config.getHttpWriteTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
+
+        // Default 30s is intentionally shorter than OkHttp's 5-min default to stay below
+        // typical k8s/Istio idle-connection kill timers (~10–60s), preventing stale-connection SocketException.
+        var keepAlive = config.getHttpConnectionKeepAlive();
+        long keepAliveMs = keepAlive != null ? keepAlive.toMillis() : 30_000L;
+        builder.connectionPool(new ConnectionPool(5, keepAliveMs, TimeUnit.MILLISECONDS));
 
         return builder.build();
     }

@@ -77,4 +77,15 @@ public interface MinioConfig {
     @Nullable
     @PluginProperty(group = "advanced")
     Duration getHttpWriteTimeout();
+
+    /**
+     * Keep-alive duration for idle HTTP connections in the OkHttp connection pool.
+     * Connections idle longer than this are evicted before reuse, preventing
+     * {@code SocketException: Socket closed} when network infrastructure (Kubernetes,
+     * Istio, load balancers) closes TCP connections after a shorter idle period.
+     * Defaults to {@code PT30S} (30 seconds) when {@code null}.
+     */
+    @Nullable
+    @PluginProperty(group = "advanced")
+    Duration getHttpConnectionKeepAlive();
 }
