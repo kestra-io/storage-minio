@@ -15,6 +15,10 @@ services:
 
       # Force listen port inside container to match your logs (9000)
       VGW_PORT: ":9000"
+
+      # Enable virtual-host style bucket addressing (bucket in Host header),
+      # required by MinioStorageVhostTest which connects as <bucket>.localhost.
+      VGW_VIRTUAL_DOMAIN: "localhost"
     entrypoint:
       - "sh"
       - "-c"
