@@ -29,6 +29,6 @@ public class ProxyConfiguration {
     private String username;
 
     @Schema(title = "The password for proxy authentication.")
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "connection", secret = true)
     private String password;
 }

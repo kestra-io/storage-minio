@@ -17,10 +17,10 @@ public interface MinioConfig {
     @PluginProperty(group = "connection")
     int getPort();
 
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "connection", secret = true)
     String getAccessKey();
 
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "connection", secret = true)
     String getSecretKey();
 
     @PluginProperty(group = "connection")
