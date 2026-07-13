@@ -5,12 +5,15 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509TrustManager;
 
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.kestra.storage.minio.domains.ProxyConfiguration;
 
@@ -22,9 +25,12 @@ import io.minio.credentials.IamAwsProvider;
 import io.minio.credentials.MinioEnvironmentProvider;
 import io.minio.credentials.Provider;
 import io.minio.credentials.StaticProvider;
+import okhttp3.ConnectionPool;
 import okhttp3.OkHttpClient;
 
 public class MinioClientFactory {
+
+    private static final Logger log = LoggerFactory.getLogger(MinioClientFactory.class);
 
     public static MinioClient of(final MinioConfig config) {
         try {
@@ -73,6 +79,22 @@ public class MinioClientFactory {
             }
         }
 
+        if (config.getHttpConnectTimeout() != null) {
+            builder.connectTimeout(config.getHttpConnectTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
+        if (config.getHttpReadTimeout() != null) {
+            builder.readTimeout(config.getHttpReadTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
+        if (config.getHttpWriteTimeout() != null) {
+            builder.writeTimeout(config.getHttpWriteTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        // Default 30s is intentionally shorter than OkHttp's 5-min default to stay below
+        // typical k8s/Istio idle-connection kill timers (~10–60s), preventing stale-connection SocketException.
+        var keepAlive = config.getHttpConnectionKeepAlive();
+        long keepAliveMs = keepAlive != null ? keepAlive.toMillis() : 30_000L;
+        builder.connectionPool(new ConnectionPool(5, keepAliveMs, TimeUnit.MILLISECONDS));
+
         return builder.build();
     }
 
@@ -97,6 +119,13 @@ public class MinioClientFactory {
         OkHttpClient.Builder builder = createHttpClient(config).newBuilder();
 
         if (config.getSslOptions() != null && config.getSslOptions().getInsecureTrustAllCertificates().equals(Boolean.TRUE)) {
+            log.warn(
+                "SECURITY WARNING: insecureTrustAllCertificates is enabled. " +
+                "All TLS certificate and hostname verification is DISABLED for MinIO connections. " +
+                "This setting must NEVER be used in production environments as it exposes all " +
+                "credentials and data in transit to man-in-the-middle attacks. " +
+                "Use a properly configured CA trust store instead."
+            );
             SSLContext sslContext = SSLContexts.custom()
                 .loadTrustMaterial(null, (chain, authType) -> true)
                 .build();
