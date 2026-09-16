@@ -143,7 +143,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         String internalStoragePrefix = getPath(tenantId, prefix);
         String prefixForMinio = toPrefix(internalStoragePrefix, false);
         return keysForPrefix(prefixForMinio, true, includeDirectories)
-            .map(name -> URI.create("kestra://" + prefix.getPath() + name.substring(internalStoragePrefix.length())))
+            .map(name -> kestraUri(prefix.getPath() + name.substring(internalStoragePrefix.length())))
             .toList();
     }
 
@@ -310,7 +310,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             throw reThrowMinioStorageException(uri.toString(), e);
         }
 
-        return URI.create("kestra://" + uri.getPath());
+        return kestraUri(uri.getPath());
     }
 
     private URI limit(URI uri) throws IOException {
@@ -446,7 +446,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             throw reThrowMinioStorageException(uri.toString(), e);
         }
 
-        return URI.create(getPath("kestra://", uri));
+        return kestraUri(getPath(uri));
     }
 
     @Override
@@ -500,7 +500,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
         } catch (Exception e) {
             throw new IOException(e);
         }
-        return URI.create(getPath("kestra://", to));
+        return kestraUri(getPath(to));
     }
 
     private void move(String source, String dest, List<DeleteRequest.Object> toDelete) throws Exception {
@@ -575,7 +575,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             .map(Pair::getLeft)
             .map(name -> name.replaceFirst(tenantId + "/", ""))
             .map(name -> name.endsWith("/") ? name.substring(0, name.length() - 1) : name)
-            .map(name -> URI.create("kestra:///" + name))
+            .map(MinioStorage::kestraUri)
             .collect(Collectors.toList());
     }
 
@@ -615,6 +615,14 @@ public class MinioStorage implements StorageInterface, MinioConfig {
             } catch (Exception e) {
                 LOG.warn("Failed to close MinIO client", e);
             }
+        }
+    }
+
+    private static URI kestraUri(String path) {
+        try {
+            return new URI("kestra", "", path.startsWith("/") ? path : "/" + path, null, null);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid Kestra storage path: " + path, e);
         }
     }
 }
