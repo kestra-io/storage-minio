@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import io.kestra.core.docs.JsonSchemaGenerator;
 import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.storages.StorageInterface;
 
 import jakarta.inject.Inject;
 
@@ -24,11 +25,10 @@ class MinioStorageSchemaTest {
     @SuppressWarnings("unchecked")
     @Test
     void schema() {
-        var schema = jsonSchemaGenerator.schemas(MinioStorage.class, false);
+        var schema = jsonSchemaGenerator.properties(StorageInterface.class, MinioStorage.class);
 
-        var definition = (Map<String, Object>) ((Map<String, Object>) schema.get("definitions")).get(MinioStorage.class.getName());
-        var properties = (Map<String, Object>) definition.get("properties");
-        assertThat((List<String>) definition.get("required"), containsInAnyOrder("endpoint", "bucket"));
+        var properties = (Map<String, Object>) schema.get("properties");
+        assertThat((List<String>) schema.get("required"), containsInAnyOrder("endpoint", "bucket"));
         assertThat(properties, not(hasKey("minioClient")));
         assertThat(((Map<String, Object>) properties.get("clientPem")).get("$secret"), is(true));
     }
