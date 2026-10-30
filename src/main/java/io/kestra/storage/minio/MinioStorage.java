@@ -33,6 +33,7 @@ import io.minio.errors.*;
 import io.minio.messages.DeleteRequest;
 import io.minio.messages.DeleteResult;
 import io.minio.messages.Item;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -67,6 +68,7 @@ public class MinioStorage implements StorageInterface, MinioConfig {
     @Builder.Default
     private BytesSize partSize = new BytesSize(1024 * 1024 * 5);
 
+    @Hidden
     @Getter(AccessLevel.PRIVATE)
     private MinioClient minioClient;
 
