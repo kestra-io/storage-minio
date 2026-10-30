@@ -8,12 +8,12 @@ import io.kestra.storage.minio.domains.SslOptions;
 import io.kestra.storage.minio.internal.BytesSize;
 
 import jakarta.annotation.Nullable;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 public interface MinioConfig {
 
     @PluginProperty(group = "connection")
-    @NotNull
+    @NotBlank
     String getEndpoint();
 
     @PluginProperty(group = "connection")
@@ -32,7 +32,7 @@ public interface MinioConfig {
     boolean isSecure();
 
     @PluginProperty(group = "connection")
-    @NotNull
+    @NotBlank
     String getBucket();
 
     @PluginProperty

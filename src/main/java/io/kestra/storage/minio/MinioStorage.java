@@ -95,6 +95,9 @@ public class MinioStorage implements StorageInterface, MinioConfig {
      **/
     @Override
     public void init() {
+        if (endpoint == null || endpoint.isBlank() || bucket == null || bucket.isBlank()) {
+            throw new IllegalArgumentException("MinioStorage requires 'endpoint' and 'bucket' to be configured");
+        }
         this.minioClient = MinioClientFactory.of(this);
     }
 
